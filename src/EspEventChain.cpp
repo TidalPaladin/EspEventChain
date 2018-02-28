@@ -1,8 +1,11 @@
 #include "EspEventChain.h"
 
+EspEventChain() { construct(); }
+
 EspEventChain::EspEventChain(size_t num_events)
 {
 	_events.reserve(num_events);
+	construct();
 }
 
 
@@ -129,7 +132,7 @@ void EspEventChain::handleTick() {
 void EspEventChain::advanceToNextCallable() {
 
 	const citerator_t INITIAL_POS = _currentEvent++;
-	if( atEndOfChain() ) { reset(); }
+	if( atEndOfChain() && !_runOnceFlag) { reset(); }
 
 	while( !validCurrentEvent() && !atEndOfChain() ) {
 		_currentEvent++;
