@@ -75,6 +75,24 @@ void EspEventChain::start() {
 	_started = true;
 }
 
+void EspEventChain::startFrom(size_t event_num) {
+
+}
+
+void EspEventChain::runOnceStartFrom(size_t event_num) {
+
+}
+
+void EspEventChain::runOnce(size_t event_num) {
+
+}
+
+void EspEventChain::setCurrentEventTo(size_t event_num) {
+	_currentEvent = _events.cend();
+	 std::advance(_currentEvent, event_num);
+}
+
+
 void EspEventChain::stop() {
 
 #ifdef ESP32
@@ -90,6 +108,8 @@ void EspEventChain::stop() {
 	_started = false;
 	
 }
+
+
 
 void EspEventChain::sHandleTick(void *ptr) {
 	EspEventChain *pChain = (EspEventChain*)ptr;

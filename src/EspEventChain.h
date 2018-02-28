@@ -271,6 +271,8 @@ class EspEventChain {
 		 */
 		void start();
 
+		void startFrom(size_t event_num);
+
 
 		/**
 		 * @brief Stops the event chain
@@ -279,6 +281,17 @@ class EspEventChain {
 		 * 
 		 */
 		void stop();
+
+		/**
+		 * @brief Runs the event chain from first to last one time
+		 * 
+		 * post:    reset() called, _currentEvent positioned at the first event,
+		 *          ticker armed to call first event, running() == true
+		 * 
+		 */
+		void runOnce();
+
+		void runOnceStartFrom(size_t event_num);
 
 		/**
 		 * @brief Gets whether the event chain is running
@@ -330,6 +343,7 @@ class EspEventChain {
 		#endif
 
 		bool _started : 1;
+		bool _runOnceFlag : 1;
 
 	private:
 
@@ -396,6 +410,10 @@ class EspEventChain {
 		 * @return The time in milliseconds to wait before _currentEvent will be called
 		 */
 		unsigned long scheduleNextEvent(unsigned long offset_ms);
+
+		void setCurrentEventTo(size_t event_num);
+
+		bool checkValidEventNum(size_t event_num) const;
 
 
 	#ifdef ESP32
