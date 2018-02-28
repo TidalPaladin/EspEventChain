@@ -18,6 +18,7 @@
 #include <vector>
 #include <functional>
 #include <algorithm>
+#include "EspEvent.h"
 
 
 #ifndef ESP32
@@ -25,103 +26,6 @@
 #endif
 
 
-/**
- * 
- * Data structure representing one event. Holds data about the callback method to run and the tick delay
- * relative to the preceeding event
- * 
- */
-class EspEvent {
-
-	public:
-
-		typedef std::function<void()> callback_t;
-
-		/**
-		 * @brief Default constructor
-		 * 
-		 * post: callback is empty, time = 0
-		 * 
-		 */
-		EspEvent() : _time_ms(0) { }
-
-		/**
-		 * @brief Constructor
-		 * 
-		 * @param relative_time_ms      The delay in milliseconds between the preceeding event and this event
-		 *                              0 < relative_time_ms
-		 * 
-		 * @param event                 The void() callback to run when the event is triggered
-		 *                              event takes no parameters and returns void
-		 * 
-		 * @param identifying_handle    A text handle to identify this event as part of the chain
-		 */
-		EspEvent(unsigned long relative_time_ms, callback_t event, const char* identifying_handle = "null")
-		:
-		_time_ms(relative_time_ms),
-		_callback(event),
-		_HANDLE(identifying_handle)
-		{
-			
-		}
-
-		/**
-		 * @brief Tests whether the event stores a callable function
-		 * 
-		 * @return true if a callable function is contained, false otherwise
-		 */
-		operator bool() const { return (bool)_callback; }
-
-		/**
-		 * @brief Sets the time for this event relative to the event that will preceed it in
-		 * the EspEventChain
-		 * 
-		 * @param ms    The time in milliseconds, 0 <= ms
-		 *              ms = 0 for an event that will run immediately after the one preceeding it
-		 * 
-		 * @return this
-		 */
-		EspEvent &setTime(unsigned long ms);
-
-
-		/**
-		 * @brief Sets the time for this event relative to the event that will preceed it in
-		 * the EspEventChain
-		 * 
-		 * @param ms The time in milliseconds, 0 < ms
-		 * 
-		 * @return this
-		 */
-		EspEvent &setCallback(callback_t &callback);
-
-		/**
-		 * @brief Gets the time property for this Event
-		 * 
-		 * @return Time in milliseconds, 0 < newTime_ms
-		 */
-		unsigned long getTime() const { return _time_ms; }
-
-		/**
-		 * @brief Gets the text handle for this event for the purpose of identification
-		 * 
-		 * @return "null" if no handle was set, or identifying_handle assigned at construction
-		 */
-		const char* getHandle() const { return _HANDLE; }
-
-		/**
-		 * @brief Runs the callback for this event
-		 * 
-		 * @return The time in milliseconds that the callback took to run
-		 */
-		unsigned long runEvent() const;
-
-	private:
-
-		const char* _HANDLE;
-		unsigned long _time_ms;
-		callback_t _callback;
-		
-};
 
 
 /**
@@ -139,13 +43,29 @@ class EspEventChain {
 		typedef container_t::iterator iterator_t;
 		typedef EspEvent::callback_t callback_t;
 
+	private:
+
+		// The container of EspEvents and the corresponding iterators
+		container_t _events;
+		citerator_t _currentEvent;
+		
+		// The class that actually handles the periodic calls
+		#ifdef ESP32
+			TaskHandle_t _taskHandle = NULL;
+		#else
+			Ticker _tick;
+		#endif
+
+		bool _started : 1;
+		bool _runOnceFlag : 1;
+
 	public:
 		
 		/**
 		 * @brief Default constructor, nothing gets initialized
 		 * 
 		 */
-		EspEventChain() { }
+		EspEventChain();
 
 		/**
 		 * @brief Reserved space constructor, makes room for "num_events" events
@@ -167,15 +87,19 @@ class EspEventChain {
 		:
 		_events({e1, events...})
 		{
-
-		}
-
-		~EspEventChain() {
-			stop();
+			construct();
 		}
 
 		/**
+		 * @brief Destructor to ensure the chain is stopped when destroyed
+		 * 
+		 * post: stop() called, isRunning() == false
+		~EspEventChain() { stop(); }
+
+		/**
 		 * @brief Add an event to the end of the chain
+		 * 
+		 * // TODO do we need to stop the event and do all this extra nonsense?
 		 * 
 		 * @details Constructs an event at the end of the chain via perfect forwarding of args
 		 * 
@@ -185,7 +109,7 @@ class EspEventChain {
 		 */
 		template<typename... Args>
 		size_t addEvent(Args... args) {
-			const bool WAS_RUNNING = running();
+			const bool WAS_RUNNING = isRunning();
 			stop();
 			_events.emplace_back(args...);
 			reset();
@@ -201,7 +125,7 @@ class EspEventChain {
 		 * @return numEvents() - 1, ie the position of the new event in the chain
 		 */
 		size_t addEvent(EspEvent event) {
-			const bool WAS_RUNNING = running();
+			const bool WAS_RUNNING = isRunning();
 			stop();
 			_events.push_back(event);
 			reset();
@@ -266,7 +190,7 @@ class EspEventChain {
 		 * @brief Starts the event chain
 		 * 
 		 * post:    reset() called, _currentEvent positioned at the first event,
-		 *          ticker armed to call first event, running() == true
+		 *          ticker armed to call first event, isRunning() == true
 		 * 
 		 */
 		void start();
@@ -277,7 +201,7 @@ class EspEventChain {
 		/**
 		 * @brief Stops the event chain
 		 * 
-		 * post: Ticker disarmed, running() == false
+		 * post: Ticker disarmed, isRunning() == false
 		 * 
 		 */
 		void stop();
@@ -286,7 +210,7 @@ class EspEventChain {
 		 * @brief Runs the event chain from first to last one time
 		 * 
 		 * post:    reset() called, _currentEvent positioned at the first event,
-		 *          ticker armed to call first event, running() == true
+		 *          ticker armed to call first event, isRunning() == true
 		 * 
 		 */
 		void runOnce();
@@ -298,7 +222,7 @@ class EspEventChain {
 		 * 
 		 * @return true if the chain is running, false otherwise
 		 */
-		bool running() const { return _started; }
+		bool isRunning() const { return _started; }
 
 
 		/**
@@ -325,27 +249,16 @@ class EspEventChain {
 		 */
 		unsigned long totalTimeBefore(size_t index) const;
 
-	private:
-
-		// The container of EspEvents and the corresponding iterators
-		
-
-		container_t _events;
-		citerator_t _currentEvent;
-
-		unsigned long _timeBetweenRepeats_ms = 0;
-		
-		// The class that actually handles the periodic calls
-		#ifdef ESP32
-			TaskHandle_t _taskHandle = NULL;
-		#else
-			Ticker _tick;
-		#endif
-
-		bool _started : 1;
-		bool _runOnceFlag : 1;
+	
 
 	private:
+
+		/**
+		 * @brief Constructor helper
+		 * 
+		 * post: _runOnceFlag = false, _started = false
+		 */
+		void construct();
 
 		/**
 		 * @brief Resets the current event iterator to the beginning of the event chain

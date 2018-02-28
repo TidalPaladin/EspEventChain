@@ -5,23 +5,7 @@ EspEventChain::EspEventChain(size_t num_events)
 	_events.reserve(num_events);
 }
 
-unsigned long EspEvent::runEvent() const {
-	if(!_callback) return 0;
 
-	const unsigned long START = millis();
-	(_callback)();
-	return millis() - START;
-}
-
-EspEvent &EspEvent::setTime(unsigned long ms) {
-	_time_ms = ms;
-	return *this;
-}
-
-EspEvent &EspEvent::setCallback(callback_t &callback) {
-	_callback = callback;
-	return *this;
-}
 
 unsigned long EspEventChain::totalTime() const {
 	return totalTimeBefore( numEvents()-1 ) + getTimeOf(numEvents()-1);  
@@ -83,13 +67,24 @@ void EspEventChain::runOnceStartFrom(size_t event_num) {
 
 }
 
-void EspEventChain::runOnce(size_t event_num) {
+void EspEventChain::runOnce() {
 
 }
 
 void EspEventChain::setCurrentEventTo(size_t event_num) {
+	if(!checkValidEventNum)
+		panic();
+
 	_currentEvent = _events.cend();
 	 std::advance(_currentEvent, event_num);
+}
+
+bool EspEventChain::checkValidEventNum(size_t event_num) const {
+	if(event_num >= _events.size()) {}
+		Serial.println("EspEventChain - checkValidEventNum failed");
+		return false;
+	}
+	return true;
 }
 
 
@@ -195,6 +190,10 @@ void EspEventChain::preventTaskEnd(unsigned long howLong_ms) {
 #endif
 
 
+void EspEventChain::construct() {
+	_runOnceFlag = false;
+	_started = false;
+}
 
 
 
