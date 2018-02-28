@@ -2,6 +2,8 @@
 
 Provides class `EspEventChain`, an interface that simplifies scheduling of irregularly spaced `Ticker` events. Rather than relying on `once_ms` to schedule irregularly spaced events, they can be grouped under this data structure which will handle timing internally.
 
+This class was created to handle the timing of events in [ESPLed](https://github.com/TidalPaladin/ESPLed), where blinking on and off needed to occur at unique times relative to the last change in LED state.
+
 ## Key Features
 * **Track multiple events in one data structure** - 
 	Multiple callbacks that would otherwise appear together as separate ticker events can now be stored inside of one data structure. Provide timing information and the callback, and `EspEventChain` will copy and store each event internally.
@@ -12,6 +14,9 @@ Provides class `EspEventChain`, an interface that simplifies scheduling of irreg
 
 * **Continuous Running / Starting, and Stopping** - 
 	Start and stop methods allow for control of the event chain. Once started the chain will loop until stopped.
+
+* **Single Ticker** - 
+	A single intance of `Ticker` is used to coordinate events on ESP8266. On ESP32 no more than one thread will be created while the chain is running.
 
 
 ## Visualizing the Data Structure
