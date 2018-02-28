@@ -132,7 +132,12 @@ void EspEventChain::handleTick() {
 void EspEventChain::advanceToNextCallable() {
 
 	const citerator_t INITIAL_POS = _currentEvent++;
-	if( atEndOfChain() && !_runOnceFlag) { reset(); }
+	if( atEndOfChain() ){
+		if( !_runOnceFlag )
+			reset();
+		else
+			_runOnceFlag = false;
+	}
 
 	while( !validCurrentEvent() && !atEndOfChain() ) {
 		_currentEvent++;
