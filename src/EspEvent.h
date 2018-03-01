@@ -31,15 +31,19 @@
  */
 class EspEvent {
 
+	public:
+
+		typedef std::function<void()> callback_t;
+
     private:
 
 		const char* _HANDLE;
 		unsigned long _time_ms;
 		callback_t _callback;
 
-	public:
+		
 
-		typedef std::function<void()> callback_t;
+	public:
 
 		/**
 		 * @brief Default constructor
@@ -113,3 +117,5 @@ class EspEvent {
 		unsigned long runEvent() const;
 
 };
+
+#endif

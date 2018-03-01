@@ -1,6 +1,12 @@
 #include "EspEventChain.h"
 
-EspEventChain() { construct(); }
+/**
+ * 
+ * 
+ * 	Constructors
+ * 
+ */
+EspEventChain::EspEventChain() { construct(); }
 
 EspEventChain::EspEventChain(size_t num_events)
 {
@@ -10,29 +16,42 @@ EspEventChain::EspEventChain(size_t num_events)
 
 
 
+
+
+/**
+ * 
+ * 
+ * 	Public methods
+ * 
+ */
+
+
 unsigned long EspEventChain::totalTime() const {
 	return totalTimeBefore( numEvents()-1 ) + getTimeOf(numEvents()-1);  
 }
 
-unsigned long EspEventChain::totalTimeBefore(size_t index) const {
+unsigned long EspEventChain::totalTimeBefore(size_t event_num) const {
 
-	if( index >= numEvents() ) 
+	if( !checkValidEventNum(event_num) ) 
 		panic();
-	else if(index == 0)
+
+	// Time before event 0 is 0
+	else if(event_num == 0)
 		return 0;
 
+	// Iterate through list, adding up getTimeOf()
 	unsigned long total = 0;
-	
-	for(int pos = 0; pos < index; pos++){
+	for(int pos = 0; pos < event_num; pos++){
 		total += getTimeOf(pos);
 	}
 	return total;
 } 
 
-unsigned long EspEventChain::getTimeOf(size_t pos) const {
-	if( pos >= numEvents() ) panic();
+unsigned long EspEventChain::getTimeOf(size_t event_num) const {
+	if( !checkValidEventNum(event_num) )
+		panic();
 
-	return _events.at(pos).getTime();
+	return _events.at(event_num).getTime();
 }
 
 int EspEventChain::getPositionFromHandle(const char* handle) const {
@@ -46,9 +65,11 @@ int EspEventChain::getPositionFromHandle(const char* handle) const {
 EspEventChain::citerator_t EspEventChain::getIteratorFromHandle(const char* handle) const {
 	citerator_t result = _events.cend();
 
+	// Make sure handle is good
 	if(handle == nullptr || !strcmp(handle, "null"))
 		return result;
 
+	// Look for handle in the container
 	for(auto it = _events.cbegin(); it != _events.cend(); it++) {
 		if( !strcmp(handle, it->getHandle())) 
 			result = it;
@@ -56,67 +77,115 @@ EspEventChain::citerator_t EspEventChain::getIteratorFromHandle(const char* hand
 	return result;
 }
 
+void EspEventChain::changeTimeOf(size_t pos, unsigned long ms) {
+	if( pos >= numEvents() ) panic();
+	_events.at(pos).setTime(ms);
+}
+
+
+
+
+/**
+ * 
+ * 
+ * 
+ * 		Event insertion / removal
+ * 
+ * 
+ */
+
+
+void EspEventChain::push_back(const EspEvent &event) {
+	_events.push_back(event);
+}
+
+void EspEventChain::insert(size_t event_num, const EspEvent &event) {
+	if( !checkValidEventNum(event_num) )
+		panic();
+	
+	auto insert_target = _events.begin();
+	std::advance(insert_target, event_num);
+	_events.insert(insert_target, event);
+}
+
+EspEvent EspEventChain::remove(size_t event_num) {
+	if( !checkValidEventNum(event_num) )
+		panic();
+
+	EspEvent result = _events.at(event_num); 
+
+	auto erase_target = _events.begin(); 
+	std::advance(erase_target, event_num);
+	_events.erase(erase_target);
+
+	return result;
+}
+
+
+
+
+size_t EspEventChain::numEvents() const { return _events.size(); }
+
+ 
+
+/**
+ * 
+ * 
+ * 	start() variants
+ * 
+ */
+
 void EspEventChain::start() {
-	reset();
+	startFrom(0);
+}
+
+void EspEventChain::startFrom(size_t event_num) {
+	setCurrentEventTo(event_num);
 	handleTick();
 	_started = true;
 }
 
-void EspEventChain::startFrom(size_t event_num) {
-
-}
-
 void EspEventChain::runOnceStartFrom(size_t event_num) {
-
+	_runOnceFlag = true;
+	startFrom(event_num);
 }
 
 void EspEventChain::runOnce() {
-
-}
-
-void EspEventChain::setCurrentEventTo(size_t event_num) {
-	if(!checkValidEventNum)
-		panic();
-
-	_currentEvent = _events.cend();
-	 std::advance(_currentEvent, event_num);
-}
-
-bool EspEventChain::checkValidEventNum(size_t event_num) const {
-	if(event_num >= _events.size()) {}
-		Serial.println("EspEventChain - checkValidEventNum failed");
-		return false;
-	}
-	return true;
+	runOnceStartFrom(0);
 }
 
 
 void EspEventChain::stop() {
 
 #ifdef ESP32
-
 	vTaskDelete(_taskHandle);
-
 #else
-
 	_tick.detach();
-
 #endif
-
 	_started = false;
-	
+
 }
 
 
+
+
+
+
+
+
+
+/**
+ * 
+ * 	Ticker interface methods
+ * 
+ * 
+ */
 
 void EspEventChain::sHandleTick(void *ptr) {
 	EspEventChain *pChain = (EspEventChain*)ptr;
 	if(pChain == nullptr) panic();
 
 	pChain->handleTick();
-
-
-
 }
 
 void EspEventChain::handleTick() {
@@ -129,27 +198,41 @@ void EspEventChain::handleTick() {
 }
 
 
-void EspEventChain::advanceToNextCallable() {
+bool EspEventChain::advanceToNextCallable() {
 
+	// First advance to the next event in the chain
 	const citerator_t INITIAL_POS = _currentEvent++;
+
 	if( atEndOfChain() ){
-		if( !_runOnceFlag )
-			reset();
-		else
+
+		// Reset to beginning of chain
+		setCurrentEventTo(0);
+
+		// If we were only supposed to run once we're done
+		if( _runOnceFlag ) {
+			stop();
 			_runOnceFlag = false;
+			return false;
+		}
+
 	}
 
+	// If we made it here, we've reset to the start of the chain
+	// Look for the next valid current event from the start of the chain
 	while( !validCurrentEvent() && !atEndOfChain() ) {
 		_currentEvent++;
 	}
 
-	// Stop if we cant find another valid event
-	if( !validCurrentEvent() )
-		stop();
+	// We have either found another valid event, or _currentEvent remained the same before
+	// the call to this method
+	return true;
 }
 
+
 unsigned long EspEventChain::scheduleNextEvent(unsigned long offset_ms) {
-	advanceToNextCallable();
+	if( !advanceToNextCallable() )
+		return 0;
+
 	unsigned long delay = _currentEvent->getTime();
 
 
@@ -163,6 +246,9 @@ unsigned long EspEventChain::scheduleNextEvent(unsigned long offset_ms) {
 
 	delay -= ( offset_ms <= delay ? offset_ms : delay); 
 
+
+
+// Schedule event in appropriate manner
 #ifdef ESP32
 	
 	xTaskCreate(
@@ -197,6 +283,21 @@ void EspEventChain::preventTaskEnd(unsigned long howLong_ms) {
 }
 #endif
 
+void EspEventChain::setCurrentEventTo(size_t event_num) {
+	if( !checkValidEventNum(event_num) )
+		panic();
+
+	_currentEvent = _events.cbegin();
+	 std::advance(_currentEvent, event_num);
+}
+
+bool EspEventChain::checkValidEventNum(size_t event_num) const {
+	if(event_num >= _events.size()) {
+		Serial.println("EspEventChain - checkValidEventNum failed");
+		return false;
+	}
+	return true;
+}
 
 void EspEventChain::construct() {
 	_runOnceFlag = false;
@@ -205,7 +306,8 @@ void EspEventChain::construct() {
 
 
 
-void EspEventChain::changeTimeOf(size_t pos, unsigned long ms) {
-	if( pos >= numEvents() ) panic();
-	_events.at(pos).setTime(ms);
-}
+
+
+
+bool EspEventChain::validCurrentEvent() const { return !atEndOfChain() && *_currentEvent; }
+bool EspEventChain::atEndOfChain() const { return _currentEvent == _events.cend(); }

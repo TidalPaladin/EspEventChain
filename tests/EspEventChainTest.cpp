@@ -84,7 +84,7 @@ bool eventChainTest2() {
 	test.printResult(t1+t2, chain.totalTime());
 	test.printResult(t1, chain.totalTimeBefore(1));
 
-	chain.addEvent(e1);
+	chain.push_back(e1);
 	test.printResult(3, chain.numEvents());
 	test.printResult(2*t1+t2, chain.totalTime());
 	test.printResult(t1, chain.getTimeOf(2));
@@ -138,8 +138,107 @@ bool eventChainTest6() {
 }
 
 
+bool eventChainTest7() {
+	TestHelper test("insert() and push_back()","fixed test");
+	unsigned long t1 = 0, t2 = 10;
+
+	EspEvent e1(t1, []() {
+
+	});
+	EspEvent e2(t2, []() {
+
+	});
+
+	EspEventChain chain;
+	chain.push_back(e1);
+	chain.insert(0, e2);
+	chain.push_back(e1);
+	chain.insert(chain.numEvents()-1, e2);
+
+	const unsigned long EXPECTED_TIMES[] = {t2, t1, t2, t1};
+	const size_t TEST_SIZE = sizeof(EXPECTED_TIMES) / sizeof(EXPECTED_TIMES[0]);
+
+	for(size_t i = 0; i < TEST_SIZE; i++) {
+		test.printResult(EXPECTED_TIMES[i], chain.getTimeOf(i));
+	}
+
+	test.printResult();
+}
+
+bool eventChainTest8() {
+	TestHelper test("emplace() and emplace_back()","fixed test");
+	unsigned long t1 = 0, t2 = 10;
+
+	std::function<void()> dummy =  []() {
+
+	};
+
+	EspEventChain chain;
+	chain.emplace_back(t1, dummy);
+	chain.emplace(0, t2, dummy);
+	chain.emplace_back(t1, dummy);
+	chain.emplace(chain.numEvents()-1, t2, dummy);
+
+	const unsigned long EXPECTED_TIMES[] = {t2, t1, t2, t1};
+	const size_t TEST_SIZE = sizeof(EXPECTED_TIMES) / sizeof(EXPECTED_TIMES[0]);
+
+	for(size_t i = 0; i < TEST_SIZE; i++) {
+		test.printResult(EXPECTED_TIMES[i], chain.getTimeOf(i));
+	}
+
+	test.printResult();
+}
+
+bool eventChainTest9() {
+	TestHelper test("remove()","fixed test");
+	unsigned long t1 = 0, t2 = 10;
+
+	EspEvent e1(t1, []() {
+
+	});
+	EspEvent e2(t2, []() {
+
+	});
+
+	EspEventChain chain(e1, e2, e1, e1, e2, e2);
+
+	// e1 -> e1 -> e2, e1 e2, e2
+	const size_t REMOVE_POSITIONS[] = {2, 0, 3, 1, 1, 0};
+	const unsigned long EXPECTED_TIMES[] = {t1, t1, t2, t1, t2, t2};
+	const size_t TEST_SIZE = sizeof(EXPECTED_TIMES) / sizeof(EXPECTED_TIMES[0]);
+
+	for(size_t i = 0; i < TEST_SIZE; i++) {
+		EspEvent removed_event = chain.remove(REMOVE_POSITIONS[i]);
+		test.printResult(EXPECTED_TIMES[i], removed_event.getTime());
+		test.printResult(TEST_SIZE - i - 1, chain.numEvents());
+	}
+
+	test.printResult();
+}
 
 
+bool eventChainTest10() {
+	TestHelper test("runOnceStartFrom()","fixed test");
+	unsigned long t1 = 15, t2 = 10;
+
+	unsigned long count = 0;
+
+	EspEvent e1(t1, [&]() {
+		count += 2;
+	});
+	EspEvent e2(t2, [&]() {
+		count += 3;
+	});
+
+	EspEventChain chain(e1, e2, e1, e1, e2, e2);
+	const size_t START_FROM = 2;
+	const unsigned long EXPECTED_COUNT = 2+2+3+3;
+	chain.runOnceStartFrom(START_FROM);
+
+	delay(chain.totalTime() * 3);
+	test.printResult(EXPECTED_COUNT, count);
+	test.printResult();
+}
 
 
 
@@ -156,6 +255,14 @@ void setup() {
 	eventChainTest4();
 	eventChainTest5();
 	eventChainTest6();
+	eventChainTest7();
+	eventChainTest8();
+	eventChainTest9();
+	eventChainTest10();
+
+
+
+
 
 	TestHelper::end();
 }

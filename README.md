@@ -179,31 +179,83 @@ EspEventChain(EspEvent e1, Args... events);
 
 ```c++
 /**
- * @brief Add an event to the end of the chain
+ * @brief Constructs an EspEvent using the supplied parameters at the end of the chain
  * 
- * @details Constructs an event at the end of the chain via perfect forwarding of args
+ * pre: Undefined behavior if the chain is running when called, may continue uninterrupted
  * 
  * @tparam args Constructor arguments for EspEvent
  * 
- * @return numEvents() - 1, ie the position of the new event in the chain
+ * post: numEvents()++, event added to end of chain
+ * 
  */
 template<typename... Args>
-size_t addEvent(Args... args);
+void emplace_back(Args... args) { _events.emplace_back(args...); }
 ```
 
 ```c++
 /**
  * @brief Add an event to the end of the chain
  * 
+ * pre: Undefined behavior if the chain is running when called, may continue uninterrupted
+ * 
  * @param event The EspEvent object to add
  * 
- * @return numEvents() - 1, ie the position of the new event in the chain
+ * post: numEvents()++, event added to end of chain
+ * 
  */
-size_t addEvent(EspEvent event);
+void push_back(const EspEvent &event);
 ```
 
 ```c++
 
+/**
+ * @brief Constructs an EspEvent using the supplied parameters at the the given position in the chain
+ * 
+ * pre: Undefined behavior if the chain is running when called, may continue uninterrupted
+ * 
+ * @param event_num		The position in the chain where the event should be constructed
+ * 						0 <= event_num < numEvents();
+ * @tparam args 		Constructor arguments for EspEvent
+ * 
+ * post: numEvents()++, event inserted at event_num, getTimeOf(event_num) = event.getTime()
+ * 
+ */
+template<typename... Args>
+void emplace(size_t event_num, Args... args);
+```
+
+```c++
+/**
+ * @brief Add an event to the given position in the chain
+ * 
+ * pre: Undefined behavior if the chain is running when called, may continue uninterrupted
+ * 
+ * @param event_num		The position in the chain where the event should be constructed
+ * 						0 <= event_num < numEvents();
+ * 
+ * @param event		The EspEvent object to add to the chain
+ * 
+ * post: numEvents()++, event inserted at event_num, getTimeOf(event_num) = event.getTime()
+ * 
+ */
+void insert(size_t event_num, const EspEvent &event);
+```
+
+```c++
+/**
+ * @brief Removes the event at the given position from the chain
+ * 
+ * @param event_num		The position in the chain of the event to remove
+ * 						0 <= event_num < numEvents()
+ * 
+ * post: numEvents()--
+ * 
+ * @return The object that was removed
+ */
+EspEvent remove(size_t event_num);
+```
+
+```c++
 /**
  * @brief Gets the number of events in the chain
  * 
@@ -264,24 +316,53 @@ citerator_t getIteratorFromHandle(const char* handle) const;
 
 ```c++
 /**
- * @brief Starts the event chain
+ * @brief Starts the event chain from the beginning
  * 
- * post:    reset() called, _currentEvent positioned at the first event,
- *          ticker armed to call first event, running() == true
+ * post:    _currentEvent positioned at the first event,
+ *          ticker armed to call first event, isRunning() == true
  * 
  */
 void start();
 ```
 
 ```c++
-
 /**
- * @brief Stops the event chain
+ * @brief Starts the event chain from the given event number
  * 
- * post: Ticker disarmed, running() == false
+ * @param event_num		The position in the chain to start from
+ * 						0 <= event_num < numEvents()
+ * 
+ * post:    _currentEvent positioned at event_num,
+ *          ticker armed to call _currentEvent, isRunning() == true
  * 
  */
-void stop();
+void startFrom(size_t event_num);
+```
+
+```c++
+
+/**
+ * @brief Runs the event chain from first to last one time
+ * 
+ * post:    _currentEvent positioned at the first event,
+ *          ticker armed to call first event, isRunning() == true
+ * 
+ */
+void runOnce();
+```
+
+```c++
+/**
+ * @brief Runs the event chain once starting from the given event number
+ * 
+ * @param event_num		The position in the chain to start from
+ * 						0 <= event_num < numEvents()
+ * 
+ * post: 	currentEvent positioned at event_num,
+ * 			ticker armed to call _currentEvent, isRunning() == true
+ * 
+ */
+void runOnceStartFrom(size_t event_num);
 ```
 
 ```c++

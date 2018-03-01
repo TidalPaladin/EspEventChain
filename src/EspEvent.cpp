@@ -2,7 +2,7 @@
 
 EspEvent::EspEvent() : _time_ms(0) { }
 
-EspEvent::EspEvent(unsigned long relative_time_ms, callback_t event, const char* identifying_handle = "null")
+EspEvent::EspEvent(unsigned long relative_time_ms, callback_t event, const char* identifying_handle)
 :
 _time_ms(relative_time_ms),
 _callback(event),
