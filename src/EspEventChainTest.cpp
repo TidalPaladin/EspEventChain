@@ -263,7 +263,54 @@ bool eventChainTest11() {
 
 }
 
+bool eventChainTest12() {
 
+	TestHelper test("start()","long events");
+	Serial.println("This will take a little");
+	unsigned long t1 = 5, t2 = 5;
+
+	unsigned long count = 0;
+
+	EspEvent e1(t1, [&]() {
+		10*9*8*7*6*5*4*3*2;
+	});
+	EspEvent e2(t2, [&]() {
+		10*9*8*7*6*5*4*3*2;
+	});
+
+	EspEventChain chain(e1, e2, e1, e1, e2, e2);
+	chain.start();
+
+	delay(chain.totalTime() * 100);
+	chain.stop();
+	return test.printResult();
+
+}
+
+
+
+bool eventChainTest13() {
+
+	TestHelper test("start()","long continuous chain");
+	Serial.println("This will take a little");
+	unsigned long t1 = 5, t2 = 0;
+
+	unsigned long count = 0;
+
+	EspEvent e1(t1, [&]() {
+	});
+	EspEvent e2(t2, [&]() {
+		10*9*8*7*6*5*4*3*2;
+	});
+
+	EspEventChain chain(e1, e2, e2, e2,e2,e2,e2,e2);
+	chain.start();
+
+	delay(chain.totalTime() * 100);
+	chain.stop();
+	return test.printResult();
+
+}
 
 
 void setup() {
@@ -283,8 +330,8 @@ void setup() {
 	eventChainTest9();
 	eventChainTest10();
 	eventChainTest11();
-
-
+	eventChainTest12();
+	eventChainTest13();
 
 
 	TestHelper::end();

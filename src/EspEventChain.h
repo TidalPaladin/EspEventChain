@@ -14,6 +14,10 @@
 #ifndef __ESP_EVENT_CHAIN_H__
 #define __ESP_EVENT_CHAIN_H__
 
+#define __ESP_EVENT_CHAIN_DEBUG_TAG__	"*EspEvent"
+#define __ESP_EVENT_CHAIN_DEBUG_SRC__	Serial
+
+
 #include <Arduino.h>
 #include <vector>
 #include <functional>
@@ -139,8 +143,7 @@ class EspEventChain {
 		 */
 		template<typename... Args>
 		void emplace(size_t event_num, Args... args) {
-			if( !checkValidEventNum(event_num) )
-				panic();
+			checkValidEventNum(event_num, __FILE__, __LINE__, __FUNCTION__);
 
 			auto emplace_target = _events.begin();
 			std::advance(emplace_target, event_num);
@@ -384,18 +387,8 @@ class EspEventChain {
 		 */
 		void setCurrentEventTo(size_t event_num);
 
-		/**
-		 * @brief Checks if a position is a valid index of the events container
-		 * 
-		 * post: if event_num is invalid, an error is printed
-		 * 
-		 * @return true if 0 <= event_num < numEvents(), false otherwise
-		 */
-		bool checkValidEventNum(size_t event_num) const;
 
-
-	#ifdef ESP32
-
+		#ifdef ESP32
 		/**
 		 * @brief Runs an infinite loop for a given amount of time
 		 * 
@@ -406,8 +399,83 @@ class EspEventChain {
 		 * post: infinite loop will run for howLong_ms milliseconds
 		 */
 		void preventTaskEnd(unsigned long howLong_ms);
+		#endif
 
-	#endif
+		/**
+		 * 
+		 * 
+		 * 		Precondition testers
+		 * 
+		 * 
+		 */
+
+		/**
+		 * @brief Checks if a position is a valid index of the events container
+		 * 
+		 * post: if event_num is invalid, an error is printed and panic() is called
+		 * 
+		 */
+		inline void checkValidEventNum(uint32_t event_num, const char *file, int line, const char* function) const {
+			if(event_num >= _events.size() || event_num < 0) {
+				printErr(file, line, function, "Invalid event number - %i", event_num);
+				panic();
+			}
+		}
+
+		/**
+		 * @brief Checks if a time is valid
+		 * 
+		 * post: if time_ms is invalid, an error is printed and panic() is called
+		 * 
+		 */
+		inline void checkValidTime(uint32_t time_ms, const char *file, int line, const char* function) const {
+			if( time_ms < 0 ) {
+				printErr(file, line, function, "Invalid time - %i", time_ms);
+				panic();
+			}
+		}
+
+		/**
+		 * @brief Checks if a pointer is not null
+		 * 
+		 * post: if ptr is null, an error is printed and panic() is called
+		 * 
+		 */
+		template <typename T>
+		static inline void checkValidPtr(T ptr, const char *file, int line, const char* function) {
+			static_assert(sizeof(T) <= sizeof(uint32_t*), "target must be a native pointer");
+			if(ptr == nullptr) {
+				printErr(file, line, function, "Tried to operate on a null pointer");
+				panic();
+			}
+		}
+
+
+		/**
+		 * @brief Prints a debug / error message
+		 * 
+		 * @param msg	The message of the error
+		 * 
+		 * post: message printed
+		 * 
+		 */
+		template <typename... Args>
+		static inline void printErr(const char* file, int line, const char* function, const char* format, Args... args) {
+			String msgStr = String("%s - %s:%i %s() - ");
+			msgStr += String(format);
+			__ESP_EVENT_CHAIN_DEBUG_SRC__.printf(msgStr.c_str(),
+				__ESP_EVENT_CHAIN_DEBUG_TAG__,
+				file,
+				line,
+				function,
+				format,
+				args...
+			);
+			__ESP_EVENT_CHAIN_DEBUG_SRC__.println();
+		}
+
+
+
 };
 
 
