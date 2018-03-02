@@ -41,7 +41,6 @@ void eventChainTickTimeHelper(TestHelper &test, unsigned long t1, unsigned long 
 	Serial.println("Checking expected ticks");
 	unsigned long expected_ticks = 2 * wait / (t1+t2) + 1;
 	test.printResult(expected_ticks, count); 
-
 }
 
 bool eventChainTest1() {
@@ -64,7 +63,7 @@ bool eventChainTest1() {
 	test.printResult(t1, chain3.getTimeOf(0));
 	test.printResult(t2, chain3.getTimeOf(1));
 
-	test.printResult();
+	return test.printResult();
 }
 
 
@@ -98,7 +97,7 @@ bool eventChainTest3() {
 	TestHelper test("EspEventChain", "Ticking properly");
 	unsigned long t1 = 100, t2 = 75, wait = (t1 + t2)*3;
 	eventChainTickTimeHelper(test, t1, t2);
-	test.printResult();
+	return test.printResult();
 }
 
 bool eventChainTest4() {
@@ -119,7 +118,7 @@ bool eventChainTest4() {
 
 	Serial.println("If we made it this far without an exception, copy was made");
 	test.printResult(true, ticked);
-	test.printResult();
+	return test.printResult();
 
 }
 
@@ -127,14 +126,14 @@ bool eventChainTest5() {
 	TestHelper test("ESPEventChain()","time=0 events");
 	unsigned long t1 = 0, t2 = 420;
 	eventChainTickTimeHelper(test, t1, t2);
-	test.printResult();
+	return test.printResult();
 }
 
 bool eventChainTest6() {
 	TestHelper test("ESPEventChain()","speed test");
 	unsigned long t1 = 0, t2 = 10;
 	eventChainTickTimeHelper(test, t1, t2);
-	test.printResult();
+	return test.printResult();
 }
 
 
@@ -162,7 +161,7 @@ bool eventChainTest7() {
 		test.printResult(EXPECTED_TIMES[i], chain.getTimeOf(i));
 	}
 
-	test.printResult();
+	return test.printResult();
 }
 
 bool eventChainTest8() {
@@ -186,7 +185,7 @@ bool eventChainTest8() {
 		test.printResult(EXPECTED_TIMES[i], chain.getTimeOf(i));
 	}
 
-	test.printResult();
+	return test.printResult();
 }
 
 bool eventChainTest9() {
@@ -213,7 +212,7 @@ bool eventChainTest9() {
 		test.printResult(TEST_SIZE - i - 1, chain.numEvents());
 	}
 
-	test.printResult();
+	return test.printResult();
 }
 
 
@@ -237,7 +236,31 @@ bool eventChainTest10() {
 
 	delay(chain.totalTime() * 3);
 	test.printResult(EXPECTED_COUNT, count);
-	test.printResult();
+	return test.printResult();
+}
+
+
+bool eventChainTest11() {
+
+	TestHelper test("start()","fast ticking");
+	Serial.println("This will take a little");
+	unsigned long t1 = 5, t2 = 5;
+
+	unsigned long count = 0;
+
+	EspEvent e1(t1, [&]() {
+		count += 2;
+	});
+	EspEvent e2(t2, [&]() {
+		count += 3;
+	});
+
+	EspEventChain chain(e1, e2, e1, e1, e2, e2);
+	chain.start();
+
+	delay(chain.totalTime() * 100);
+	return test.printResult();
+
 }
 
 
@@ -259,7 +282,7 @@ void setup() {
 	eventChainTest8();
 	eventChainTest9();
 	eventChainTest10();
-
+	eventChainTest11();
 
 
 

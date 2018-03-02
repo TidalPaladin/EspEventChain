@@ -243,7 +243,7 @@ unsigned long EspEventChain::scheduleNextEvent(unsigned long offset_ms) {
 		delay = _currentEvent->getTime();
 	}
 
-
+	// Dont let delay become negative
 	delay -= ( offset_ms <= delay ? offset_ms : delay); 
 
 
