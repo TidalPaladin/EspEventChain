@@ -15,8 +15,10 @@
 #define __ESP_EVENT_CHAIN_H__
 
 #define __ESP_EVENT_CHAIN_DEBUG_TAG__	"*EspEvent"
-#define __ESP_EVENT_CHAIN_DEBUG_SRC__	Serial
 
+#ifndef __ESP_EVENT_CHAIN_DEBUG_SRC__
+#define __ESP_EVENT_CHAIN_DEBUG_SRC__	Serial
+#endif
 
 #include <Arduino.h>
 #include <vector>
@@ -401,6 +403,15 @@ class EspEventChain {
 		void preventTaskEnd(unsigned long howLong_ms);
 		#endif
 
+
+
+
+
+private:
+
+
+
+
 		/**
 		 * 
 		 * 
@@ -451,14 +462,6 @@ class EspEventChain {
 		}
 
 
-		/**
-		 * @brief Prints a debug / error message
-		 * 
-		 * @param msg	The message of the error
-		 * 
-		 * post: message printed
-		 * 
-		 */
 		template <typename... Args>
 		static inline void printErr(const char* file, int line, const char* function, const char* format, Args... args) {
 			String msgStr = String("%s - %s:%i %s() - ");
