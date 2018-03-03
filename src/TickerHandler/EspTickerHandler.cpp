@@ -36,8 +36,10 @@ void EspTickerHandler::sHandleTick(void* ptr) {
     if(ptr == nullptr) {
         panic();
     }
-
-    EspTickerHandler *handler = (EspTickerHandler*)(ptr);
+    EspTickerHandler *handler = static_cast<EspTickerHandler*>(ptr);
+    
+    if(!handler->callback) panic();
+    
     handler->callback();
     ESP.wdtFeed();
 }
