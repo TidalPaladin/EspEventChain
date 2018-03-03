@@ -13,7 +13,7 @@ EspEventChain::EspEventChain(size_t num_events)
 	_events.reserve(num_events);
 	construct();
 }
-
+ 
 
 
 
@@ -106,6 +106,11 @@ void EspEventChain::insert(size_t event_num, const EspEvent &event) {
 EspEvent EspEventChain::remove(size_t event_num) {
 	checkValidEventNum(event_num, __FILE__, __LINE__, __FUNCTION__);
 
+	if( isRunning() && !containsNonzeroEvent() ) {
+		printErr(__FILE__, __LINE__, __FUNCTION__, "All events have time = 0");
+		panic();
+	}
+
 	EspEvent result = _events.at(event_num); 
 
 	auto erase_target = _events.begin(); 
@@ -135,6 +140,12 @@ void EspEventChain::start() {
 
 void EspEventChain::startFrom(size_t event_num) {
 	setCurrentEventTo(event_num);
+
+	if( !containsNonzeroEvent() ) {
+		printErr(__FILE__, __LINE__, __FUNCTION__, "All events have time = 0");
+		panic();
+	}
+
 	handleTick();
 	_started = true;
 }
@@ -150,14 +161,7 @@ void EspEventChain::runOnce() {
 
 
 void EspEventChain::stop() {
-
-#ifdef ESP32
-	vTaskDelete(_taskHandle);
-#else
-	_tick.detach();
-#endif
-	_started = false;
-
+	tick.detach();
 }
 
 
@@ -168,27 +172,11 @@ void EspEventChain::stop() {
 
 
 
-/**
- * 
- * 	Ticker interface methods
- * 
- * 
- */
 
-void EspEventChain::sHandleTick(void *ptr) {
-	checkValidPtr(ptr, __FILE__, __LINE__, __FUNCTION__);
-	EspEventChain *pChain = (EspEventChain*)ptr;
-
-	pChain->handleTick();
-}
 
 void EspEventChain::handleTick() {
-	unsigned long time_for_callback = _currentEvent->runEvent();
-	unsigned long delay = scheduleNextEvent(time_for_callback);
-
-#ifdef ESP32
-	preventTaskEnd(delay);
-#endif
+	_currentEvent->runEvent();
+	scheduleNextEvent();
 }
 
 
@@ -223,64 +211,41 @@ bool EspEventChain::advanceToNextCallable() {
 }
 
 
-unsigned long EspEventChain::scheduleNextEvent(unsigned long offset_ms) {
-	checkValidTime(offset_ms, __FILE__, __LINE__, __FUNCTION__);
+unsigned long EspEventChain::scheduleNextEvent() {	
+		
+	// Move to the next callable, if we hit the end with runOnce() then abort
 	if( !advanceToNextCallable() )
 		return 0;
 
-	unsigned long delay = _currentEvent->getTime();
-
-
-	// Handle time=0 events that should be run immediately, no scheduling
-	while(delay == 0) {
-		_currentEvent->runEvent();
-		advanceToNextCallable();
-		delay = _currentEvent->getTime();
+	const unsigned long delay = _currentEvent->getTime();
+	if( delay == 0 ) {
+		handleTick();
+		return delay;
 	}
 
-	// Dont let delay become negative
-	delay -= ( offset_ms <= delay ? offset_ms : delay); 
-
-	if(delay > 1000) {
-		Serial.println("Long delay");
-		panic();
-	}
-// Schedule event in appropriate manner
-#ifdef ESP32
-	
-	xTaskCreate(
-		sHandleTick,    // Function
-		"EventChain",     // Name
-		1000,           // Stack size in words
-		(void*)this,    // Parameter
-		1,              // Task priority
-		&_taskHandle    // Task handle
-	);
-  
-#else
-
-   _tick.once_ms(delay, sHandleTick, (void*)this);
-
-#endif   
-
+	tick.once_ms(delay, [this]() {
+		this->handleTick();
+	});
 	return delay;
 }
 
 
-#ifdef ESP32
-void EspEventChain::preventTaskEnd(unsigned long howLong_ms) {
-	checkValidTime(howLong_ms, __FILE__, __LINE__, __FUNCTION__);
 
-	TickType_t xLastWakeTime = xTaskGetTickCount(); // Initialize for delayUntil
 
-	while(true){
-		const TickType_t xFrequency = howLong_ms / portTICK_PERIOD_MS;
-		vTaskDelayUntil(&xLastWakeTime, xFrequency);
-	}
 
-}
 
-#endif
+
+/**
+ * 
+ * 
+ * 
+ * 		Helpers
+ * 
+ * 
+ */
+
+
+
 
 void EspEventChain::setCurrentEventTo(size_t event_num) {
 	checkValidEventNum(event_num, __FILE__, __LINE__, __FUNCTION__);
@@ -290,16 +255,18 @@ void EspEventChain::setCurrentEventTo(size_t event_num) {
 }
 
 
-
 void EspEventChain::construct() {
 	_runOnceFlag = false;
 	_started = false;
 }
 
 
-
-
-
-
+bool EspEventChain::containsNonzeroEvent() const { 
+	for(EspEvent event : _events) {
+		if(event.getTime() != 0)
+			return true;
+	}
+	return false;
+}
 bool EspEventChain::validCurrentEvent() const { return !atEndOfChain() && *_currentEvent; }
 bool EspEventChain::atEndOfChain() const { return _currentEvent == _events.cend(); }

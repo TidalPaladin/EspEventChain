@@ -25,11 +25,7 @@
 #include <functional>
 #include <algorithm>
 #include "EspEvent.h"
-
-
-#ifndef ESP32
-#include <Ticker.h>
-#endif
+#include "TickerHandler/EspTickerHandler.h"
 
 
 
@@ -41,6 +37,8 @@
  * 
  */
 class EspEventChain {
+
+friend class EspEventFindNextCallable;
 
 	public:
 
@@ -54,13 +52,8 @@ class EspEventChain {
 		// The container of EspEvents and the corresponding iterators
 		container_t _events;
 		citerator_t _currentEvent;
-		
-		// The class that actually handles the periodic calls
-		#ifdef ESP32
-			TaskHandle_t _taskHandle = NULL;
-		#else
-			Ticker _tick;
-		#endif
+		 
+		TickerHandler tick;
 
 		bool _started : 1;
 		bool _runOnceFlag : 1;
@@ -337,6 +330,13 @@ class EspEventChain {
 		bool atEndOfChain() const;
 
 		/**
+		 * @brief Checks whether the chain contains at least one EspEvent such that getTime() != 0
+		 * 
+		 * @return true if getTime() != 0 for at least one event in the chain
+		 */
+		bool containsNonzeroEvent() const;
+
+		/**
 		 * @brief Advances the current event to the next event in the chain that is callable
 		 * 
 		 * post:    _currentEvent > _currentEventOld if the next validCurrentEvent() follows _currentEventOld in the container
@@ -377,7 +377,7 @@ class EspEventChain {
 		 * 
 		 * @return The time in milliseconds to wait before _currentEvent will be called
 		 */
-		unsigned long scheduleNextEvent(unsigned long offset_ms);
+		unsigned long scheduleNextEvent();
 
 		/**
 		 * @brief Sets the current event to the event at the given position in the event chain

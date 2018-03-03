@@ -17,7 +17,7 @@ void eventChainTickTimeHelper(TestHelper &test, unsigned long t1, unsigned long 
 	EspEvent e1(t1, [&]() {
 		unsigned long current_time = millis();
 		unsigned long elapsed_time = current_time - lastEvent;
-		test.printResultRange(count != 0 ? t1 : 0,  elapsed_time, 2);
+		test.printResultRange(count != 0 ? t1 : 0,  elapsed_time, 5);
 		count++;
 		lastEvent = current_time;
 	});
@@ -25,7 +25,7 @@ void eventChainTickTimeHelper(TestHelper &test, unsigned long t1, unsigned long 
 	EspEvent e2(t2, [&]() {
 		unsigned long current_time = millis();
 		unsigned long elapsed_time = current_time - lastEvent;
-		test.printResultRange(t2, elapsed_time, 2);
+		test.printResultRange(t2, elapsed_time, 5);
 		count++;
 		lastEvent = current_time;
 	});
