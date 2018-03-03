@@ -15,12 +15,10 @@ EspEvent::operator bool() const { return (bool)_callback; }
 unsigned long EspEvent::getTime() const { return _time_ms; }
 const char* EspEvent::getHandle() const { return _HANDLE; }
 
-unsigned long EspEvent::runEvent() const {
-	if(!_callback) return 0;
-
-	const unsigned long START = millis();
-	(_callback)();
-	return millis() - START;
+void EspEvent::runEvent() const {
+	if(_callback) {
+		(_callback)();
+	}
 }
 
 EspEvent &EspEvent::setTime(unsigned long ms) {
