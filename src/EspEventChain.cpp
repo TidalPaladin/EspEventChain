@@ -75,6 +75,8 @@ EspEventChain::citerator_t EspEventChain::getIteratorFromHandle(const char* hand
 
 void EspEventChain::changeTimeOf(size_t pos, unsigned long ms) {
 	checkValidTime(ms, __FILE__, __LINE__, __FUNCTION__);
+	checkValidEventNum(pos, __FILE__, __LINE__, __FUNCTION__);
+
 	_events.at(pos).setTime(ms);
 }
 
