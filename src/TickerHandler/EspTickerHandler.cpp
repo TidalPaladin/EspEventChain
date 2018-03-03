@@ -39,6 +39,7 @@ void EspTickerHandler::sHandleTick(void* ptr) {
 
     EspTickerHandler *handler = (EspTickerHandler*)(ptr);
     handler->callback();
+    ESP.wdtFeed();
 }
 
 void EspTickerHandler::assignMemberCallback(const callback_t &callback) {

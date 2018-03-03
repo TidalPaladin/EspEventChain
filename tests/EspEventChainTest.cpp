@@ -40,7 +40,7 @@ void eventChainTickTimeHelper(TestHelper &test, unsigned long t1, unsigned long 
 
 	Serial.println("Checking expected ticks");
 	unsigned long expected_ticks = 2 * wait / (t1+t2) + 1;
-	test.printResult(expected_ticks, count); 
+	test.printResultRange(expected_ticks, count, 1); 
 }
 
 bool eventChainTest1() {

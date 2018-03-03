@@ -112,9 +112,8 @@ class EspEvent {
 		/**
 		 * @brief Runs the callback for this event
 		 * 
-		 * @return The time in milliseconds that the callback took to run
 		 */
-		unsigned long runEvent() const;
+		void runEvent() const;
 
 };
 
