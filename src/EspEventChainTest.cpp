@@ -239,6 +239,36 @@ bool eventChainTest10() {
 	return test.printResult();
 }
 
+bool eventChainTest14() {
+	TestHelper test("start()","overlapping timings test");
+	unsigned long t1 = 5, t2 = 5;
+
+	const uint32_t LOOP_STOP = F_CPU / 1000 * t1;
+
+	unsigned long count = 0;
+
+	EspEvent e1(t1, [&]() {
+		// Kill time
+		for(uint32_t i = 0; i < LOOP_STOP * 5; i++) { 
+			__asm__("nop\r\n");
+		}
+	});
+	EspEvent e2(t2, [&]() {
+		// Kill time
+		for(uint32_t i = 0; i < LOOP_STOP * 5; i++) { 
+			__asm__("nop\r\n");
+		}
+	});
+
+	EspEventChain chain(e1, e2);
+	
+	chain.start();
+	delay((t1+t2) * 500);
+	chain.stop();
+	return test.printResult();
+}
+
+
 
 bool eventChainTest11() {
 
@@ -368,6 +398,7 @@ void setup() {
 	eventChainTest8();
 	eventChainTest9();
 	eventChainTest10();
+	eventChainTest14();
 	eventChainTest11();
 	eventChainTest12();
 	eventChainTest13();
