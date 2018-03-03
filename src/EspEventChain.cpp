@@ -219,7 +219,6 @@ unsigned long EspEventChain::scheduleNextEvent() {
 
 	const unsigned long delay = _currentEvent->getTime();
 	if( delay == 0 ) {
-		yield();
 		handleTick();
 		return delay;
 	}
@@ -227,7 +226,6 @@ unsigned long EspEventChain::scheduleNextEvent() {
 	tick.once_ms(delay, [this]() {
 		this->handleTick();
 	});
-	yield();
 	return delay;
 }
 
