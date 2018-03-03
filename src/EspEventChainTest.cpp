@@ -312,6 +312,45 @@ bool eventChainTest13() {
 
 }
 
+void printTickTock(uint32_t tick, uint32_t tock) {
+	Serial.printf("Tick: %i, Tock: %i\r", tick, tock);
+}
+
+bool eventChainLongTest() {
+
+	TestHelper test("start()","long continuous chain");
+	Serial.println("This will take a long time");
+	unsigned long t1 = 10, t2 = 0;
+
+	unsigned long tick_count = 0;
+	unsigned long tock_count = 0;
+
+
+	EspEvent e1(t1, [&]() {
+		tick_count++;
+		printTickTock(tick_count, tock_count);
+		for(int i = 0; i < 1000000; i++) {
+			// Kill some time
+		}
+	});
+	EspEvent e2(t2, [&]() {
+		tock_count++;
+		printTickTock(tick_count, tock_count);
+		for(int i = 0; i < 1000000; i++) {
+			// Kill some time
+		}
+	});
+
+	EspEventChain chain(e1, e2);
+	chain.start();
+	delay(20000);
+	chain.stop();
+	Serial.println();
+	return test.printResult();
+
+}
+
+
 
 void setup() {
 	Serial.begin(115200);
@@ -333,7 +372,7 @@ void setup() {
 	eventChainTest12();
 	eventChainTest13();
 
-
+	eventChainLongTest();
 	TestHelper::end();
 }
 
