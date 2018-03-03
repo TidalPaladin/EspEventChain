@@ -93,7 +93,7 @@ class EspEvent {
 		 * 
 		 * @return this
 		 */
-		EspEvent &setCallback(callback_t &callback);
+		EspEvent &setCallback(const callback_t &callback);
 
 		/**
 		 * @brief Gets the time property for this Event

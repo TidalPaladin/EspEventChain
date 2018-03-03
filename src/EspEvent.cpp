@@ -26,7 +26,7 @@ EspEvent &EspEvent::setTime(unsigned long ms) {
 	return *this;
 }
 
-EspEvent &EspEvent::setCallback(callback_t &callback) {
+EspEvent &EspEvent::setCallback(const callback_t &callback) {
 	_callback = callback;
 	return *this;
 }
