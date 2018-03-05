@@ -12,6 +12,7 @@ class TickerHandler : public EspTickerHandler {
 private:
 
     Ticker _tick;
+    unsigned long _nextExpectedCallTime;
 
 public:
 
@@ -33,6 +34,7 @@ private:
      * 
      */
     virtual void _attach_ms(uint32_t ms) { 
+        _nextExpectedCallTime = millis() + ms;
         _tick.attach_ms( ms, sHandleTick, (void*)this );
     }
 
@@ -46,6 +48,7 @@ private:
      * 
      */
     virtual void _once_ms(uint32_t ms) {
+        _nextExpectedCallTime = millis() + ms;
         _tick.once_ms( ms, sHandleTick, (void*)this );
     }
 

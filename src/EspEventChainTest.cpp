@@ -2,6 +2,12 @@
 #include "TestHelper.h"
 #include "EspEventChain.h"
 
+uint32_t long_event_length = 100000;
+const EspEvent::callback_t LONG_CALLBACK = [&]() {
+	for(int i = 0; i < ::long_event_length; i++){
+		ESP.wdtFeed();
+	}
+};
 
 
 void eventChainTickTimeHelper(TestHelper &test, unsigned long t1, unsigned long t2) {
@@ -247,18 +253,8 @@ bool eventChainTest14() {
 
 	unsigned long count = 0;
 
-	EspEvent e1(t1, [&]() {
-		// Kill time
-		for(uint32_t i = 0; i < LOOP_STOP * 5; i++) { 
-			__asm__("nop\r\n");
-		}
-	});
-	EspEvent e2(t2, [&]() {
-		// Kill time
-		for(uint32_t i = 0; i < LOOP_STOP * 5; i++) { 
-			__asm__("nop\r\n");
-		}
-	});
+	EspEvent e1(t1, LONG_CALLBACK);
+	EspEvent e2(t2, LONG_CALLBACK);
 
 	EspEventChain chain(e1, e2);
 	
@@ -318,30 +314,6 @@ bool eventChainTest12() {
 }
 
 
-
-bool eventChainTest13() {
-
-	TestHelper test("start()","long continuous chain");
-	Serial.println("This will take a little");
-	unsigned long t1 = 5, t2 = 0;
-
-	unsigned long count = 0;
-
-	EspEvent e1(t1, [&]() {
-	});
-	EspEvent e2(t2, [&]() {
-		10*9*8*7*6*5*4*3*2;
-	});
-
-	EspEventChain chain(e1, e2, e2, e2,e2,e2,e2,e2);
-	chain.start();
-
-	delay(chain.totalTime() * 100);
-	chain.stop();
-	return test.printResult();
-
-}
-
 void printTickTock(uint32_t tick, uint32_t tock) {
 	Serial.printf("Tick: %i, Tock: %i\r", tick, tock);
 }
@@ -359,21 +331,57 @@ bool eventChainLongTest() {
 	EspEvent e1(t1, [&]() {
 		tick_count++;
 		printTickTock(tick_count, tock_count);
-		for(int i = 0; i < 1000000; i++) {
-			// Kill some time
+		for(int i = 0; i < long_event_length; i++) {
+			ESP.wdtFeed();
 		}
 	});
 	EspEvent e2(t2, [&]() {
 		tock_count++;
 		printTickTock(tick_count, tock_count);
-		for(int i = 0; i < 1000000; i++) {
-			// Kill some time
+		for(int i = 0; i < long_event_length; i++) {
+			ESP.wdtFeed();
 		}
 	});
 
 	EspEventChain chain(e1, e2);
 	chain.start();
-	delay(20000);
+	delay(10000);
+	chain.stop();
+	Serial.println();
+	return test.printResult();
+
+}
+
+bool eventChainTimerTest() {
+
+	TestHelper test("EspEventChain","does timer hang on long events?");
+	Serial.println("This will take a long time");
+	unsigned long t1 = 10, t2 = 3;
+
+	unsigned long last_millis;
+
+
+	EspEvent e1(t1, [&]() {
+		for(int i = 0; i < long_event_length; i++) {
+			// Kill some time
+			ESP.wdtFeed();
+		}
+	});
+	EspEvent e2(t2, [&]() {
+		for(int i = 0; i < long_event_length; i++) {
+			// Kill some time
+			ESP.wdtFeed();
+		}
+	});
+
+	EspEventChain chain(e1, e2);
+
+	chain.start();
+	last_millis = millis();
+	for(int i = 0; i < 20; i++){
+		test.printResult(false, millis() == last_millis);
+		delay(1000);
+	}
 	chain.stop();
 	Serial.println();
 	return test.printResult();
@@ -401,7 +409,7 @@ void setup() {
 	eventChainTest14();
 	eventChainTest11();
 	eventChainTest12();
-	eventChainTest13();
+	eventChainTimerTest();
 
 	eventChainLongTest();
 	TestHelper::end();

@@ -14,6 +14,7 @@ public:
 protected:
 
     callback_t callback;
+    static unsigned long _timeAtLastArming;
 
 public:
 
@@ -134,6 +135,21 @@ private:
      * post: this->callback = callback
      */
     void assignMemberCallback(const callback_t &callback);
+
+    /**
+     * @brief Keeps track of the time when the ticker was armed for later comparison
+     * 
+     * post: _timeAtLastArming = millis()
+     */
+    static void setLastArmedTime();
+
+    /**
+     * @brief Checks millis() against the last armed time to ensure that the clock has ticked
+     * between this tick and the last
+     * 
+     * @return true if the clock has ticked between last event and this event
+     */
+    static bool checkLastArmedTime();
 
 };
 
