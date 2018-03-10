@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 #include <functional>
-
+#include "EspDebug.h"
 
 class EspTickerHandler {
 
@@ -15,6 +15,7 @@ protected:
 
     callback_t callback;
     static unsigned long _timeAtLastArming;
+    static const char* TAG;
 
 public:
 
@@ -90,6 +91,8 @@ public:
 
 protected:
 
+    virtual void handleTick() = 0;
+
     /**
      * @brief Static wrapper to serve as a ticker target
      * 
@@ -153,8 +156,9 @@ private:
 
 };
 
-#include "Esp8266TickerHandler.h"
+
 #include "Esp32TickerHandler.h"
+#include "Esp8266TickerHandler.h"
 
 
 #endif

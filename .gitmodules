@@ -1,0 +1,8 @@
+[submodule "lib/EspDebug"]
+	path = lib/EspDebug
+	url = https://github.com/TidalPaladin/EspDebug.git
+	branch = master
+[submodule "lib/EspTestHelper"]
+	path = lib/EspTestHelper
+	url = https://github.com/TidalPaladin/EspTestHelper.git
+	branch = master

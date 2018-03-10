@@ -20,12 +20,24 @@
 #define __ESP_EVENT_CHAIN_DEBUG_SRC__	Serial
 #endif
 
+#define __ESP_EVENT_CHAIN_CHECK_POS__(pos) if(pos < 0 || pos > _events.size()) { ESP_LOGE(__ESP_EVENT_CHAIN_DEBUG_TAG__, "Invalid index = %i - numEvents() = %i", pos, _events.size()); panic(); }
+#define __ESP_EVENT_CHAIN_CHECK_PTR__(ptr) if(ptr == nullptr) { ESP_LOGE(__ESP_EVENT_CHAIN_DEBUG_TAG__, "Null pointer exception!"); panic(); }
+#define __ESP_EVENT_CHAIN_TRY_CALL__(f) \
+	if(!f) { \
+		size_t pos = std::distance(_events.begin(), _currentEvent); \
+		ESP_LOGW(__ESP_EVENT_CHAIN_DEBUG_TAG__, "Couldnt call event at pos = %i", pos); \
+	} \
+	else { (f)(); }
+
+
+
 #include <Arduino.h>
 #include <vector>
 #include <functional>
 #include <algorithm>
+#include "EspDebug.h"
 #include "EspEvent.h"
-#include "TickerHandler/EspTickerHandler.h"
+//#include "TickerHandler/EspTickerHandler.h"
 
 
 
@@ -53,7 +65,7 @@ friend class EspEventFindNextCallable;
 		container_t _events;
 		citerator_t _currentEvent;
 		 
-		TickerHandler tick;
+		//TickerHandler tick;
 
 		bool _started : 1;
 		bool _runOnceFlag : 1;
@@ -86,6 +98,7 @@ friend class EspEventFindNextCallable;
 		:
 		_events({e1, events...})
 		{
+			ESP_LOGI(__ESP_EVENT_CHAIN_DEBUG_TAG__, "Constructing chain with %i events", sizeof...(events)+1);
 			construct();
 		}
 
@@ -107,7 +120,10 @@ friend class EspEventFindNextCallable;
 		 * 
 		 */
 		template<typename... Args>
-		void emplace_back(Args... args) { _events.emplace_back(args...); }
+		void emplace_back(Args... args) { 
+			_events.emplace_back(args...);
+			ESP_LOGI(__ESP_EVENT_CHAIN_DEBUG_TAG__, "Event added to chain");
+		}
 
 		
 		/**
@@ -138,11 +154,11 @@ friend class EspEventFindNextCallable;
 		 */
 		template<typename... Args>
 		void emplace(size_t event_num, Args... args) {
-			checkValidEventNum(event_num, __FILE__, __LINE__, __FUNCTION__);
-
+			__ESP_EVENT_CHAIN_CHECK_POS__(event_num);
 			auto emplace_target = _events.begin();
 			std::advance(emplace_target, event_num);
 			_events.emplace(emplace_target, args...);
+			ESP_LOGI(__ESP_EVENT_CHAIN_DEBUG_TAG__, "Event added to chain");
 		}
 
 
@@ -307,6 +323,8 @@ friend class EspEventFindNextCallable;
 
 	private:
 
+		void _start();
+
 		/**
 		 * @brief Constructor helper
 		 * 
@@ -343,7 +361,7 @@ friend class EspEventFindNextCallable;
 		 *          _currentEvent =< _currentEventOld if there is no validCurrentEvent() between _currentEventOld and the end
 		 *              of the container
 		 * 
-		 * @return true if the advance was successful, false otherwise, or if a runOnce() chain has finished
+		 * @return 
 		 */
 		bool advanceToNextCallable();
 
@@ -369,17 +387,6 @@ friend class EspEventFindNextCallable;
 
 
 		/**
-		 * @brief Schedules the next tick
-		 * 
-		 * @param offset_ms A time in milliseconds to deduct from the delay between the next event
-		 * 
-		 * post: _currentEvent advanced to next valid event, ticker armed to call _currentEvent
-		 * 
-		 * @return The time in milliseconds to wait before _currentEvent will be called
-		 */
-		unsigned long scheduleNextEvent();
-
-		/**
 		 * @brief Sets the current event to the event at the given position in the event chain
 		 * 
 		 * @param event_num		The position of an event in the chain,
@@ -388,96 +395,6 @@ friend class EspEventFindNextCallable;
 		 * post: _events.at(event_num) = _currentEvent
 		 */
 		void setCurrentEventTo(size_t event_num);
-
-
-		#ifdef ESP32
-		/**
-		 * @brief Runs an infinite loop for a given amount of time
-		 * 
-		 * @note This is required on ESP32 to prevent scheduled tasks from ending
-		 * 
-		 * @param howLong_ms    The time in milliseconds for the loop to run,
-		 *                      0 < howLong_ms
-		 * post: infinite loop will run for howLong_ms milliseconds
-		 */
-		void preventTaskEnd(unsigned long howLong_ms);
-		#endif
-
-
-
-
-
-private:
-
-
-
-
-		/**
-		 * 
-		 * 
-		 * 		Precondition testers
-		 * 
-		 * 
-		 */
-
-		/**
-		 * @brief Checks if a position is a valid index of the events container
-		 * 
-		 * post: if event_num is invalid, an error is printed and panic() is called
-		 * 
-		 */
-		inline void checkValidEventNum(uint32_t event_num, const char *file, int line, const char* function) const {
-			if(event_num >= _events.size() || event_num < 0) {
-				printErr(file, line, function, "Invalid event number - %i", event_num);
-				panic();
-			}
-		}
-
-		/**
-		 * @brief Checks if a time is valid
-		 * 
-		 * post: if time_ms is invalid, an error is printed and panic() is called
-		 * 
-		 */
-		inline void checkValidTime(uint32_t time_ms, const char *file, int line, const char* function) const {
-			if( time_ms < 0 ) {
-				printErr(file, line, function, "Invalid time - %i", time_ms);
-				panic();
-			}
-		}
-
-		/**
-		 * @brief Checks if a pointer is not null
-		 * 
-		 * post: if ptr is null, an error is printed and panic() is called
-		 * 
-		 */
-		template <typename T>
-		static inline void checkValidPtr(T ptr, const char *file, int line, const char* function) {
-			static_assert(sizeof(T) <= sizeof(uint32_t*), "target must be a native pointer");
-			if(ptr == nullptr) {
-				printErr(file, line, function, "Tried to operate on a null pointer");
-				panic();
-			}
-		}
-
-
-		template <typename... Args>
-		static inline void printErr(const char* file, int line, const char* function, const char* format, Args... args) {
-			String msgStr = String("%s - %s:%i %s() - ");
-			msgStr += String(format);
-			__ESP_EVENT_CHAIN_DEBUG_SRC__.printf(msgStr.c_str(),
-				__ESP_EVENT_CHAIN_DEBUG_TAG__,
-				file,
-				line,
-				function,
-				format,
-				args...
-			);
-			__ESP_EVENT_CHAIN_DEBUG_SRC__.println();
-		}
-
-
 
 };
 

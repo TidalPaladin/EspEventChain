@@ -1,7 +1,7 @@
+#ifndef ESP32
 #ifndef __ESP8266_TICKER_HANDLER_H__
 #define __ESP8266_TICKER_HANDLER_H__
 
-#ifndef ESP32
 
 #include "EspTickerHandler.h"
 #include <Ticker.h>
@@ -22,7 +22,19 @@ public:
 
 private:
 
-    
+    virtual void handleTick() {
+            if(!checkLastArmedTime()) return;
+
+        // if(ptr == nullptr) {
+        //     panic();
+        // }
+        
+        EspTickerHandler *handler = static_cast<EspTickerHandler*>(ptr);
+        
+        //if(!handler->callback) panic();
+        
+        handler->callback();
+    }
 
    /**
      * @brief Abstract method that handles the creation of a periodic method call

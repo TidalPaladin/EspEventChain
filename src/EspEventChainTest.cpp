@@ -1,6 +1,9 @@
+
 #include <Arduino.h>
+#include "EspDebug.h"
 #include "TestHelper.h"
 #include "EspEventChain.h"
+
 
 uint32_t long_event_length = 100000;
 const EspEvent::callback_t LONG_CALLBACK = [&]() {
@@ -43,10 +46,6 @@ void eventChainTickTimeHelper(TestHelper &test, unsigned long t1, unsigned long 
 	chain.start();
 	delay( wait + DELAY_MARGIN_ERR );
 	chain.stop();
-
-	Serial.println("Checking expected ticks");
-	unsigned long expected_ticks = 2 * wait / (t1+t2) + 1;
-	test.printResultRange(expected_ticks, count, 1); 
 }
 
 bool eventChainTest1() {
@@ -57,7 +56,7 @@ bool eventChainTest1() {
 
 	};
 	unsigned long t1 = 20, t2 = 30;
-
+	
 	EspEventChain chain1;
 	EspEventChain chain2(100);
 	EspEventChain chain3( EspEvent(t1, f), EspEvent(t2, f) );
@@ -98,6 +97,21 @@ bool eventChainTest2() {
 
 }
 
+
+bool eventChainTest2s5() {
+	TestHelper test("EspEventChain", "sipmlest tick test");
+
+	EspEvent e1(50, [&]() {
+		Serial.println("Tick");
+	});
+	EspEventChain chain(e1);
+	
+	chain.start();
+	delay(2000);
+	chain.stop();
+
+	return test.printResult();
+}
 
 bool eventChainTest3() {
 	TestHelper test("EspEventChain", "Ticking properly");
@@ -332,14 +346,18 @@ bool eventChainLongTest() {
 		tick_count++;
 		printTickTock(tick_count, tock_count);
 		for(int i = 0; i < long_event_length; i++) {
+			#ifndef ESP32
 			ESP.wdtFeed();
+			#endif
 		}
 	});
 	EspEvent e2(t2, [&]() {
 		tock_count++;
 		printTickTock(tick_count, tock_count);
 		for(int i = 0; i < long_event_length; i++) {
+			#ifndef ESP32
 			ESP.wdtFeed();
+			#endif
 		}
 	});
 
@@ -364,13 +382,18 @@ bool eventChainTimerTest() {
 	EspEvent e1(t1, [&]() {
 		for(int i = 0; i < long_event_length; i++) {
 			// Kill some time
+			#ifndef ESP32
 			ESP.wdtFeed();
+			#endif
 		}
 	});
 	EspEvent e2(t2, [&]() {
 		for(int i = 0; i < long_event_length; i++) {
 			// Kill some time
+
+			#ifndef ESP32
 			ESP.wdtFeed();
+			#endif
 		}
 	});
 
@@ -398,6 +421,7 @@ void setup() {
 
 	eventChainTest1();
 	eventChainTest2();
+	eventChainTest2s5();
 	eventChainTest3();
 	eventChainTest4();
 	eventChainTest5();

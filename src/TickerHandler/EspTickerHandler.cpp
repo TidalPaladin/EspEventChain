@@ -1,6 +1,8 @@
 #include "EspTickerHandler.h"
 
 unsigned long EspTickerHandler::_timeAtLastArming = 0;
+const char* EspTickerHandler::TAG = "TickerWrap";
+
 
 EspTickerHandler::EspTickerHandler() {
 
@@ -34,18 +36,13 @@ void EspTickerHandler::once_ms(uint32_t ms, const callback_t &callback) {
 
 
 void EspTickerHandler::sHandleTick(void* ptr) {
-
-    if(!checkLastArmedTime()) return;
-
     if(ptr == nullptr) {
-        panic();
+       ESP_LOGE(TAG, "null pointer");
+       panic();
     }
-    
+
     EspTickerHandler *handler = static_cast<EspTickerHandler*>(ptr);
-    
-    if(!handler->callback) panic();
-    
-    handler->callback();
+    handler->handleTick(); 
 }
 
 void EspTickerHandler::assignMemberCallback(const callback_t &callback) {

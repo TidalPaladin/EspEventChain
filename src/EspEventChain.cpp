@@ -31,7 +31,7 @@ unsigned long EspEventChain::totalTime() const {
 }
 
 unsigned long EspEventChain::totalTimeBefore(size_t event_num) const {
-	checkValidEventNum(event_num, __FILE__, __LINE__, __FUNCTION__);
+	__ESP_EVENT_CHAIN_CHECK_POS__(event_num);
 
 	// Iterate through list, adding up getTimeOf()
 	unsigned long total = 0;
@@ -42,12 +42,12 @@ unsigned long EspEventChain::totalTimeBefore(size_t event_num) const {
 } 
 
 unsigned long EspEventChain::getTimeOf(size_t event_num) const {
-	checkValidEventNum(event_num, __FILE__, __LINE__, __FUNCTION__);
+	__ESP_EVENT_CHAIN_CHECK_POS__(event_num);
 	return _events.at(event_num).getTime();
 }
 
 int EspEventChain::getPositionFromHandle(const char* handle) const {
-	checkValidPtr(handle, __FILE__, __LINE__, __FUNCTION__);
+	__ESP_EVENT_CHAIN_CHECK_PTR__(handle);
 
 	citerator_t target_pos = getIteratorFromHandle(handle);
 	if( target_pos != _events.cend() ) 
@@ -57,7 +57,7 @@ int EspEventChain::getPositionFromHandle(const char* handle) const {
 }
 
 EspEventChain::citerator_t EspEventChain::getIteratorFromHandle(const char* handle) const {
-	checkValidPtr(handle, __FILE__, __LINE__, __FUNCTION__);
+	__ESP_EVENT_CHAIN_CHECK_PTR__(handle);
 
 	citerator_t result = _events.cend();
 
@@ -74,10 +74,9 @@ EspEventChain::citerator_t EspEventChain::getIteratorFromHandle(const char* hand
 }
 
 void EspEventChain::changeTimeOf(size_t pos, unsigned long ms) {
-	checkValidTime(ms, __FILE__, __LINE__, __FUNCTION__);
-	checkValidEventNum(pos, __FILE__, __LINE__, __FUNCTION__);
-
+	__ESP_EVENT_CHAIN_CHECK_POS__(pos);
 	_events.at(pos).setTime(ms);
+	ESP_LOGI(__ESP_EVENT_CHAIN_DEBUG_TAG__, "Changed time of event at index = %i to %i", pos, ms);	
 }
 
 
@@ -95,22 +94,23 @@ void EspEventChain::changeTimeOf(size_t pos, unsigned long ms) {
 
 void EspEventChain::push_back(const EspEvent &event) {
 	_events.push_back(event);
+	ESP_LOGI(__ESP_EVENT_CHAIN_DEBUG_TAG__, "Event added to chain");
 }
 
 void EspEventChain::insert(size_t event_num, const EspEvent &event) {
-	checkValidEventNum(event_num, __FILE__, __LINE__, __FUNCTION__);
-	
+	__ESP_EVENT_CHAIN_CHECK_POS__(event_num);
+
 	auto insert_target = _events.begin();
 	std::advance(insert_target, event_num);
 	_events.insert(insert_target, event);
+	ESP_LOGI(__ESP_EVENT_CHAIN_DEBUG_TAG__, "Event added to chain");
 }
 
 EspEvent EspEventChain::remove(size_t event_num) {
-	checkValidEventNum(event_num, __FILE__, __LINE__, __FUNCTION__);
-
-	if( isRunning() && !containsNonzeroEvent() ) {
-		printErr(__FILE__, __LINE__, __FUNCTION__, "All events have time = 0");
-		panic();
+	__ESP_EVENT_CHAIN_CHECK_POS__(event_num);
+	
+	if( isRunning() ) {
+		ESP_LOGW(__ESP_EVENT_CHAIN_DEBUG_TAG__, "Called removed at pos %i / size %i while chain running", event_num, numEvents());
 	}
 
 	EspEvent result = _events.at(event_num); 
@@ -118,6 +118,8 @@ EspEvent EspEventChain::remove(size_t event_num) {
 	auto erase_target = _events.begin(); 
 	std::advance(erase_target, event_num);
 	_events.erase(erase_target);
+
+	ESP_LOGI(__ESP_EVENT_CHAIN_DEBUG_TAG__, "Removed event at index = %i, numEvents() = %i", event_num, numEvents());
 
 	return result;
 }
@@ -141,18 +143,13 @@ void EspEventChain::start() {
 }
 
 void EspEventChain::startFrom(size_t event_num) {
+	ESP_LOGI(__ESP_EVENT_CHAIN_DEBUG_TAG__, "Starting chain from index = %i", event_num);	
 	setCurrentEventTo(event_num);
-
-	if( !containsNonzeroEvent() ) {
-		printErr(__FILE__, __LINE__, __FUNCTION__, "All events have time = 0");
-		panic();
-	}
-
-	handleTick();
-	_started = true;
+	_start();
 }
 
 void EspEventChain::runOnceStartFrom(size_t event_num) {
+	ESP_LOGI(__ESP_EVENT_CHAIN_DEBUG_TAG__, "Set run-once flag ahead of chain start");
 	_runOnceFlag = true;
 	startFrom(event_num);
 }
@@ -163,73 +160,142 @@ void EspEventChain::runOnce() {
 
 
 void EspEventChain::stop() {
-	tick.detach();
+	if(_started) {
+		ESP_LOGI(__ESP_EVENT_CHAIN_DEBUG_TAG__, "Stopped chain");
+		_started = false;
+		#ifndef ESP32
+		tick.detach();
+		#endif
+	}
+}
+
+void EspEventChain::_start() {
+
+	if(_events.empty()) {
+		ESP_LOGW(__ESP_EVENT_CHAIN_DEBUG_TAG__, "Not starting chain because numEvents() = 0");
+		return;
+	}
+	if( !containsNonzeroEvent() ) {
+		ESP_LOGW(__ESP_EVENT_CHAIN_DEBUG_TAG__, "Not starting chain because all times are zero");
+		return;
+	}
+	_started = true;
+
+#ifdef ESP32
+
+	// Create a task to do everything
+	xTaskCreate(
+		sHandleTick,    // Function
+		"EspEventChain",     // Name
+		3000,           // Stack size in words
+		(void*)this,    // Parameter
+		1,              // Task priority
+		NULL    // Task handle
+	);
+
+#else
+
+	// Run first event manually to start cascade
+	sHandleTick(this);
+
+#endif
+
 }
 
 
 
-
-
-
-
-
-
+void EspEventChain::sHandleTick(void* ptr) {
+	__ESP_EVENT_CHAIN_CHECK_PTR__(ptr);
+	EspEventChain *cast = static_cast<EspEventChain*>(ptr);
+	cast->handleTick();
+}
 
 
 void EspEventChain::handleTick() {
+
+#ifdef ESP32
+
+	UBaseType_t stack_size = uxTaskGetStackHighWaterMark(NULL);
+	ESP_LOGD(__ESP_EVENT_CHAIN_DEBUG_TAG__, "Stack usage estimate: %i", stack_size);
+
+
+	while(_started) {
+		TickType_t xLastWakeTime = xTaskGetTickCount(); // Initialize for delayUntil
+
+		// Run the event
+		unsigned long startTime = millis();
+		//ESP_LOGV(__ESP_EVENT_CHAIN_DEBUG_TAG__, "Starting event call");
+		_currentEvent->runEvent();
+		//ESP_LOGV(__ESP_EVENT_CHAIN_DEBUG_TAG__, "Starting event call");
+
+		if( !advanceToNextCallable() ) {
+			ESP_LOGD(__ESP_EVENT_CHAIN_DEBUG_TAG__, "No more callables to advance to");
+			_runOnceFlag = false;
+			stop();
+		}
+
+		if(uxTaskGetStackHighWaterMark(NULL) > stack_size) {
+			stack_size = uxTaskGetStackHighWaterMark(NULL);
+			ESP_LOGD(__ESP_EVENT_CHAIN_DEBUG_TAG__, "Stack usage estimate: %i", stack_size);
+		}
+
+		// Delay until the next event
+		const unsigned long TIME_BETWEEN_EVENTS_MS = _currentEvent->getTime();
+		//ESP_LOGV(__ESP_EVENT_CHAIN_DEBUG_TAG__, "Next event time: %i", TIME_BETWEEN_EVENTS_MS);
+
+		if(TIME_BETWEEN_EVENTS_MS != 0 && millis() - startTime < TIME_BETWEEN_EVENTS_MS) {
+			const TickType_t xFrequency = TIME_BETWEEN_EVENTS_MS / portTICK_PERIOD_MS;
+			//ESP_LOGV(__ESP_EVENT_CHAIN_DEBUG_TAG__, "Waiting... tick count %i -> %i", xLastWakeTime, xLastWakeTime + xFrequency);
+
+			vTaskDelayUntil(&xLastWakeTime, xFrequency);
+		}
+	}
+
+	// If we get here stop() was called, so task should delete itself
+	ESP_LOGV(__ESP_EVENT_CHAIN_DEBUG_TAG__, "Deleting task...");
+	vTaskDelete(NULL);
+
+#else
+
 	_currentEvent->runEvent();
-	scheduleNextEvent();
+	// Move to the next callable, if we hit the end with runOnce() then abort
+	// if( !advanceToNextCallable() )
+	// 	return 0;
+
+	// const unsigned long delay = _currentEvent->getTime();
+	// if( delay == 0 ) {
+	// 	handleTick();
+	// 	return delay;
+	// }
+
+	// tick.once_ms(delay, [this]() {
+	// 	this->handleTick();
+	// });
+	// return delay;
+
+#endif
+	
 }
 
 
 bool EspEventChain::advanceToNextCallable() {
 
-	// First advance to the next event in the chain
-	const citerator_t INITIAL_POS = _currentEvent++;
+	// Base case, we took a step forward and hit a valid event
+	_currentEvent++;
+	if(validCurrentEvent()) { return true; }
 
-	if( atEndOfChain() ){
-
-		// Reset to beginning of chain
-		setCurrentEventTo(0);
-
-		// If we were only supposed to run once we're done
-		if( _runOnceFlag ) {
-			stop();
-			_runOnceFlag = false;
-			return false;
-		}
-
+	// If atEndOfChain(), reset to _events.cbegin()
+	if( atEndOfChain() ) {
+		_currentEvent = _events.cbegin();
 	}
+	
+	// We cant advance if _runOnceFlag and the chain was reset
+	return !(_runOnceFlag && _currentEvent == _events.cbegin()) || advanceToNextCallable();
 
-	// If we made it here, we've reset to the start of the chain
-	// Look for the next valid current event from the start of the chain
-	while( !validCurrentEvent() && !atEndOfChain() ) {
-		_currentEvent++;
-	}
-
-	// We have either found another valid event, or _currentEvent remained the same before
-	// the call to this method
-	return true;
 }
 
 
-unsigned long EspEventChain::scheduleNextEvent() {	
-		
-	// Move to the next callable, if we hit the end with runOnce() then abort
-	if( !advanceToNextCallable() )
-		return 0;
 
-	const unsigned long delay = _currentEvent->getTime();
-	if( delay == 0 ) {
-		handleTick();
-		return delay;
-	}
-
-	tick.once_ms(delay, [this]() {
-		this->handleTick();
-	});
-	return delay;
-}
 
 
 
@@ -250,7 +316,7 @@ unsigned long EspEventChain::scheduleNextEvent() {
 
 
 void EspEventChain::setCurrentEventTo(size_t event_num) {
-	checkValidEventNum(event_num, __FILE__, __LINE__, __FUNCTION__);
+	__ESP_EVENT_CHAIN_CHECK_POS__(event_num);
 
 	_currentEvent = _events.cbegin();
 	 std::advance(_currentEvent, event_num);

@@ -1,7 +1,7 @@
+#ifdef ESP32
 #ifndef __ESP32_TICKER_HANDLER_H__
 #define __ESP32_TICKER_HANDLER_H__
 
-#ifdef ESP32
 
 #include "EspTickerHandler.h"
 
@@ -10,13 +10,14 @@ class TickerHandler : public EspTickerHandler {
 
 public:
 
-    Esp32TickerHandler() : attached(false) {}
+    TickerHandler() : attached(false) {}
 
-    virtual bool active() { return _taskHandle == NULL; }
+    virtual bool active() { return attached; }
 
     virtual void detach() { 
         attached = false;
-        vTaskDelete(_taskHandle); 
+        if(_taskHandle != NULL)
+            vTaskDelete(_taskHandle); 
     }
 
 private:
@@ -27,16 +28,15 @@ private:
 
 private:
 
-    static void sHandleTick(void *ptr) {
+    virtual void handleTick() {
 
-        // Call the parent tickHandler
-        EspTickerHandler::sHandleTick(ptr); 
+        do {
+            delayTask(tickTime);
+            callback ? (callback)() : detach();
+        } 
+        while(active());
 
-        TickerHandler *handler = (Esp32TickerHandler*)ptr;
-        preventTaskEnd(handler->tickTime);
-
-        if(!handler->attached)
-            handler->detach();
+        vTaskDelete(NULL);
     }
 
     /**
@@ -78,7 +78,7 @@ private:
      * post: loop will run for 'ms' milliseconds
      * 
      */
-    static void preventTaskEnd(uint32_t ms) {
+    static void delayTask(uint32_t ms) {
         if(ms == 0)
             return;
 
