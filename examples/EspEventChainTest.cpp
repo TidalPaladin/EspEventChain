@@ -315,7 +315,7 @@ bool eventChainTest11() {
 }
 
 void setup() {
-	Serial.begin(115200);
+	Serial.begin(921600);
 	Serial.println("\n\n");
 	Serial.println("Beginning tests\n");
 	delay(1000);

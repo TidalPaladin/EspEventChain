@@ -20,11 +20,13 @@ EspEventChain::EspEventChain(size_t num_events) {
  *
  */
 
-unsigned long EspEventChain::totalTime() const {
-	return totalTimeBefore(numEvents() - 1) + getTimeOf(numEvents() - 1);
+unsigned long EspEventChain::getTotalTime() const {
+	if (numEvents() == 0) return 0;
+	return getTotalTimeBefore(numEvents() - 1) + getTimeOf(numEvents() - 1);
 }
 
-unsigned long EspEventChain::totalTimeBefore(size_t event_num) const {
+unsigned long EspEventChain::getTotalTimeBefore(size_t event_num) const {
+	if (event_num == 0) return 0;
 	__ESP_EVENT_CHAIN_CHECK_POS__(event_num);
 
 	// Iterate through list, adding up getTimeOf()
@@ -89,8 +91,9 @@ void EspEventChain::push_back(const EspEvent &event) {
 }
 
 void EspEventChain::insert(size_t event_num, const EspEvent &event) {
-	__ESP_EVENT_CHAIN_CHECK_POS__(event_num);
+	if (event_num == numEvents()) _events.push_back(event);
 
+	__ESP_EVENT_CHAIN_CHECK_POS__(event_num);
 	auto insert_target = _events.begin();
 	std::advance(insert_target, event_num);
 	_events.insert(insert_target, event);
@@ -154,9 +157,9 @@ void EspEventChain::stop() {
 			yield();
 		}
 
-#ifndef ESP32
-		tick.detach();
-#endif
+		// #ifndef ESP32
+		// 		tick.detach();
+		// #endif
 	}
 }
 

@@ -30,6 +30,8 @@
 *.exe
 *.out
 *.app
+
+*.log
 .pioenvs
 .piolibdeps
 .vscode/*.db
@@ -39,3 +41,4 @@ platformio.ini
 lib/readme.txt
 .vscode
 .vscode/.browse.c_cpp.db*
+openocd.log

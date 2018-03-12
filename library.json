@@ -1,0 +1,25 @@
+{
+    "name": "EspEventChain",
+    "keywords": "Ticker, timing, interrupts, ESP8266, ESP32",
+    "description": "ESP8266/32 library to trigger callbacks at irregular intervals",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/TidalPaladin/EspEventChain.git"
+    },
+    "authors": [
+        {
+            "name": "Scott Chase Waggener",
+            "email": "tidal@utexas.edu",
+            "url": "https://github.com/TidalPaladin",
+            "maintainer": true
+        }
+    ],
+    "dependencies": {
+        "name": "EspDebug",
+        "authors": "Scott Chase Waggener",
+        "frameworks": "arduino"
+    },
+    "version": "1.0",
+    "frameworks": "arduino",
+    "platforms": "espressif8266, espressif32"
+}
