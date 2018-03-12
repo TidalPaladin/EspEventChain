@@ -13,14 +13,10 @@
 #ifndef __ESP_EVENT_H__
 #define __ESP_EVENT_H__
 
-#include <Arduino.h>
+#include <stdint.h>
 #include <vector>
 #include <functional>
 #include <algorithm>
-
-#ifndef ESP32
-#include <Ticker.h>
-#endif
 
 /**
  *

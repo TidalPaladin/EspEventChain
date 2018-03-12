@@ -94,12 +94,12 @@ bool eventChainTest2() {
 	EspEventChain chain(e1, e2);
 
 	test.printResult(2, (int)chain.numEvents());
-	test.printResult(t1 + t2, chain.totalTime());
-	test.printResult(t1, chain.totalTimeBefore(1));
+	test.printResult(t1 + t2, chain.getTotalTime());
+	test.printResult(t1, chain.getTotalTimeBefore(1));
 
 	chain.push_back(e1);
 	test.printResult(3, chain.numEvents());
-	test.printResult(2 * t1 + t2, chain.totalTime());
+	test.printResult(2 * t1 + t2, chain.getTotalTime());
 	test.printResult(t1, chain.getTimeOf(2));
 
 	return test.printResult();
@@ -252,7 +252,7 @@ bool eventChainTest10p1() {
 	const unsigned long EXPECTED_COUNT = chain.numEvents();
 	chain.runOnce();
 
-	delay(chain.totalTime() * 3);
+	delay(chain.getTotalTime() * 3);
 	test.printResult(EXPECTED_COUNT, count);
 	return test.printResult();
 }
@@ -271,7 +271,7 @@ bool eventChainTest10() {
 	const unsigned long EXPECTED_COUNT = 2 + 2 + 3 + 3;
 	chain.runOnceStartFrom(START_FROM);
 
-	delay(chain.totalTime() * 3);
+	delay(chain.getTotalTime() * 3);
 	test.printResult(EXPECTED_COUNT, count);
 	return test.printResult();
 }
@@ -308,7 +308,7 @@ bool eventChainTest11() {
 	EspEventChain chain(e1, e2, e1, e1, e2, e2);
 
 	chain.start();
-	testLongDelay(chain.totalTime() * 100);
+	testLongDelay(chain.getTotalTime() * 100);
 	chain.stop();
 
 	return test.printResult();

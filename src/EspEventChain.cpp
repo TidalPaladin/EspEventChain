@@ -181,7 +181,7 @@ void EspEventChain::_start() {
 	// Create a task to do everything
 	xTaskCreate(sHandleTick,	 // Function
 				"EspEventChain", // Name
-				3000,			 // Stack size in words
+				5000,			 // Stack size in words
 				(void *)this,	// Parameter
 				2,				 // Task priority
 				NULL			 // Task handle
@@ -270,16 +270,13 @@ bool EspEventChain::advanceToNextCallable() {
 	_currentEvent++;
 	if (validCurrentEvent()) {
 		return true;
+	} else if (!atEndOfChain()) {
+		return advanceToNextCallable();
 	}
 
-	// If atEndOfChain(), reset to _events.cbegin()
-	if (atEndOfChain()) {
-		_currentEvent = _events.cbegin();
-	}
-
-	// We cant advance if _runOnceFlag and the chain was reset
-	return !(_runOnceFlag && _currentEvent == _events.cbegin()) ||
-		   advanceToNextCallable();
+	ESP_LOGD(__ESP_EVENT_CHAIN_DEBUG_TAG__, "Reached end of chain");
+	_currentEvent = _events.cbegin();
+	return !_runOnceFlag;
 }
 
 /**
