@@ -37,7 +37,6 @@
 .vscode/*.db
 .vscode/c_cpp_properties.json
 .vscode/launch.json
-platformio.ini
 lib/readme.txt
 .vscode
 .vscode/.browse.c_cpp.db*
