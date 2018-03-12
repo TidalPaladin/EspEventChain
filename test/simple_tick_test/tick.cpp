@@ -40,8 +40,8 @@ void eventChainTickTimeHelper(unsigned long t1, unsigned long t2) {
 	TEST_ASSERT_EQUAL_MESSAGE(false, chain.isRunning(),
 							  "isRunning() == false after stop()");
 
-	unsigned int expected_ticks =
-		chain.getTotalTime() * NUM_LOOPS / (t1 + t2) / 2 + 1;
+	unsigned long expected_ticks =
+		chain.getTotalTime() * NUM_LOOPS / (t1 + t2) * 2 + 1;
 	TEST_ASSERT_INT_WITHIN_MESSAGE(1, expected_ticks, count,
 								   "number of ticks on stop");
 }
@@ -92,7 +92,7 @@ void run_once() {
 	delay(chain.getTotalTime() * 3);
 	chain.stop();
 
-	TEST_ASSERT_EQUAL_MESSAGE(2, count, "Correct number of ticks");
+	TEST_ASSERT_EQUAL_MESSAGE(5, count, "Correct number of ticks");
 }
 
 void setup() {

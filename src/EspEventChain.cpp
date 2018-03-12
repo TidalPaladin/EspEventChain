@@ -91,7 +91,10 @@ void EspEventChain::push_back(const EspEvent &event) {
 }
 
 void EspEventChain::insert(size_t event_num, const EspEvent &event) {
-	if (event_num == numEvents()) _events.push_back(event);
+	if (event_num == numEvents()) {
+		_events.push_back(event);
+		return;
+	}
 
 	__ESP_EVENT_CHAIN_CHECK_POS__(event_num);
 	auto insert_target = _events.begin();
