@@ -156,13 +156,13 @@ void EspEventChain::stop() {
 	if (_started) {
 		_started = false;
 		ESP_LOGI(__ESP_EVENT_CHAIN_DEBUG_TAG__, "Stopped chain");
+#ifdef ESP32
 		while (_currentEvent != _events.cend()) {
 			yield();
 		}
-
-		// #ifndef ESP32
-		// 		tick.detach();
-		// #endif
+#else
+		tick.detach();
+#endif
 	}
 }
 
@@ -249,21 +249,17 @@ void EspEventChain::handleTick() {
 
 #else
 
-	_currentEvent->runEvent();
-	// Move to the next callable, if we hit the end with runOnce() then abort
-	// if( !advanceToNextCallable() )
-	// 	return 0;
+	do {
+		_currentEvent->runEvent();
+		if (!advanceToNextCallable()) {
+			_currentEvent = _events.cend();
+			stop();
+			return;
+		}
+	} while (_currentEvent->getTime() != 0);
 
-	// const unsigned long delay = _currentEvent->getTime();
-	// if( delay == 0 ) {
-	// 	handleTick();
-	// 	return delay;
-	// }
-
-	// tick.once_ms(delay, [this]() {
-	// 	this->handleTick();
-	// });
-	// return delay;
+	tick.once_ms(_currentEvent->getTime(), EspEventChain::sHandleTick,
+				 (void *)this);
 
 #endif
 }

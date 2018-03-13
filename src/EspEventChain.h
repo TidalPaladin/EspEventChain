@@ -41,7 +41,6 @@
 		(f)();                                                                 \
 	}
 
-
 #include <Arduino.h>
 
 #include <algorithm>
@@ -49,7 +48,9 @@
 #include <vector>
 #include "EspDebug.h"
 #include "EspEvent.h"
-//#include "TickerHandler/EspTickerHandler.h"
+#ifdef ESP8266
+#include <Ticker.h>
+#endif
 
 /**
  *
@@ -72,7 +73,9 @@ class EspEventChain {
 	container_t _events;
 	citerator_t _currentEvent;
 
-	// TickerHandler tick;
+#ifdef ESP8266
+	Ticker tick;
+#endif
 
 	bool _started : 1;
 	bool _runOnceFlag : 1;
