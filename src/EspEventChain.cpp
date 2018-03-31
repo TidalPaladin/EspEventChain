@@ -26,7 +26,10 @@ unsigned long EspEventChain::getTotalTime() const {
 }
 
 unsigned long EspEventChain::getTotalTimeBefore(size_t event_num) const {
-	if (event_num == 0) return 0;
+	if (event_num == 0) {
+		return 0;
+	}
+
 	__ESP_EVENT_CHAIN_CHECK_POS__(event_num);
 
 	// Iterate through list, adding up getTimeOf()
@@ -91,12 +94,14 @@ void EspEventChain::push_back(const EspEvent &event) {
 }
 
 void EspEventChain::insert(size_t event_num, const EspEvent &event) {
-	if (event_num == numEvents()) _events.push_back(event);
-
-	__ESP_EVENT_CHAIN_CHECK_POS__(event_num);
-	auto insert_target = _events.begin();
-	std::advance(insert_target, event_num);
-	_events.insert(insert_target, event);
+	if (event_num == numEvents()) {
+		_events.push_back(event);
+	} else {
+		__ESP_EVENT_CHAIN_CHECK_POS__(event_num);
+		auto insert_target = _events.begin();
+		std::advance(insert_target, event_num);
+		_events.insert(insert_target, event);
+	}
 	ESP_LOGI(__ESP_EVENT_CHAIN_DEBUG_TAG__, "Event added to chain");
 }
 

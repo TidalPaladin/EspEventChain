@@ -40,8 +40,7 @@ void eventChainTickTimeHelper(unsigned long t1, unsigned long t2) {
 	TEST_ASSERT_EQUAL_MESSAGE(false, chain.isRunning(),
 							  "isRunning() == false after stop()");
 
-	unsigned int expected_ticks =
-		chain.getTotalTime() * NUM_LOOPS / (t1 + t2) / 2 + 1;
+	unsigned int expected_ticks = NUM_LOOPS * chain.numEvents() + 1;
 	TEST_ASSERT_INT_WITHIN_MESSAGE(1, expected_ticks, count,
 								   "number of ticks on stop");
 }
@@ -62,23 +61,19 @@ void simple_tick() {
 void complex_tick() { eventChainTickTimeHelper(100, 200); }
 
 void run_once_start_from() {
-	bool tickedOnce = true;
 	int count = 0;
 	EspEvent e1(20, [&]() {
-		count++;
-		tickedOnce = false;
+		TEST_FAIL_MESSAGE("Ticked from an event that shouldn't be running");
 	});
 	EspEvent e2(20, [&]() { count++; });
-	EspEventChain chain(e1, e1, e1, e2, e2);
+	EspEventChain chain(e1, e1, e2, e2, e2);
 
 	// Start from event index 3, tickedOnce should stay false
 	chain.runOnceStartFrom(3);
-	delay(chain.getTotalTime() * 3);
+	delay(chain.getTotalTime() * 5);
 	chain.stop();
 
-	TEST_ASSERT_EQUAL_MESSAGE(2, count, "Correct number of ticks");
-	TEST_ASSERT_EQUAL_MESSAGE(true, tickedOnce,
-							  "Starting from correct position");
+	TEST_ASSERT_EQUAL_MESSAGE(2, count, "Only two ticks");
 }
 
 void run_once() {
@@ -87,12 +82,12 @@ void run_once() {
 	EspEvent e2(20, [&]() { count++; });
 	EspEventChain chain(e1, e1, e1, e2, e2);
 
-	// Start from event index 3, tickedOnce should stay false
 	chain.runOnce();
 	delay(chain.getTotalTime() * 3);
 	chain.stop();
 
-	TEST_ASSERT_EQUAL_MESSAGE(2, count, "Correct number of ticks");
+	TEST_ASSERT_EQUAL_MESSAGE(chain.numEvents(), count,
+							  "Correct number of ticks");
 }
 
 void setup() {

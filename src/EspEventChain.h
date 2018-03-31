@@ -46,6 +46,7 @@
 #include <algorithm>
 #include <functional>
 #include <vector>
+#include <iterator>
 #include "EspDebug.h"
 #include "EspEvent.h"
 //#include "TickerHandler/EspTickerHandler.h"
