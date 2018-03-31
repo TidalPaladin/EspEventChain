@@ -48,9 +48,7 @@
 #include <vector>
 #include "EspDebug.h"
 #include "EspEvent.h"
-#ifdef ESP8266
-#include <Ticker.h>
-#endif
+//#include "TickerHandler/EspTickerHandler.h"
 
 /**
  *
@@ -73,9 +71,7 @@ class EspEventChain {
 	container_t _events;
 	citerator_t _currentEvent;
 
-#ifdef ESP8266
-	Ticker tick;
-#endif
+	// TickerHandler tick;
 
 	bool _started : 1;
 	bool _runOnceFlag : 1;

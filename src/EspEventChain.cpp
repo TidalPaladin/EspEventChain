@@ -91,10 +91,7 @@ void EspEventChain::push_back(const EspEvent &event) {
 }
 
 void EspEventChain::insert(size_t event_num, const EspEvent &event) {
-	if (event_num == numEvents()) {
-		_events.push_back(event);
-		return;
-	}
+	if (event_num == numEvents()) _events.push_back(event);
 
 	__ESP_EVENT_CHAIN_CHECK_POS__(event_num);
 	auto insert_target = _events.begin();
@@ -156,13 +153,13 @@ void EspEventChain::stop() {
 	if (_started) {
 		_started = false;
 		ESP_LOGI(__ESP_EVENT_CHAIN_DEBUG_TAG__, "Stopped chain");
-#ifdef ESP32
 		while (_currentEvent != _events.cend()) {
 			yield();
 		}
-#else
-		tick.detach();
-#endif
+
+		// #ifndef ESP32
+		// 		tick.detach();
+		// #endif
 	}
 }
 
@@ -249,17 +246,21 @@ void EspEventChain::handleTick() {
 
 #else
 
-	do {
-		_currentEvent->runEvent();
-		if (!advanceToNextCallable()) {
-			_currentEvent = _events.cend();
-			stop();
-			return;
-		}
-	} while (_currentEvent->getTime() != 0);
+	_currentEvent->runEvent();
+	// Move to the next callable, if we hit the end with runOnce() then abort
+	// if( !advanceToNextCallable() )
+	// 	return 0;
 
-	tick.once_ms(_currentEvent->getTime(), EspEventChain::sHandleTick,
-				 (void *)this);
+	// const unsigned long delay = _currentEvent->getTime();
+	// if( delay == 0 ) {
+	// 	handleTick();
+	// 	return delay;
+	// }
+
+	// tick.once_ms(delay, [this]() {
+	// 	this->handleTick();
+	// });
+	// return delay;
 
 #endif
 }

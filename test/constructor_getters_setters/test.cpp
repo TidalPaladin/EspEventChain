@@ -16,6 +16,7 @@ EspEventChain chain1(e1);
 EspEventChain chain2(e1, e2);
 EspEventChain chain3(e1, e2, e3);
 EspEventChain chain4(e1, e2, e3, e4);
+EspEventChain cases[] = {chain1, chain2, chain3, chain4};
 
 void empty_initial_values() {
 	const uint8_t fixed_size = 100;
